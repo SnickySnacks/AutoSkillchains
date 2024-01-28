@@ -29,7 +29,7 @@ AutoWS settings.  Most settings are currently only available in settings.xml
     
     levelPriority -- the priority of what skillchain level to make, remove a level to avoid it entirely
     
-    chainPriority -- priority Light or Darkness when making a level 3 skillchain
+    chainPriority -- prioritize Light or Darkness when making a level 3 skillchain
     
     blacklist     -- all the aoe weaponskills you probably don't want to use
     
