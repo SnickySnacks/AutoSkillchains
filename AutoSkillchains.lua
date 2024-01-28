@@ -54,6 +54,7 @@ default.autows.opener = ''
 default.autows.waitForMB = true
 default.autows.close = true
 default.autows.closeTp = 999
+default.autows.closeDelay = 0.8
 default.autows.levelPriority = {3, 4, 2, 1}
 default.autows.chainPriority = 'Darkness'
 default.autows.blacklist = {'Cyclone','Aeolian Edge','Fell Cleave','Sonic Thrust','Spinning Attack','Shockwave','Earth Crusher','Cataclysm','Spinning Scythe','Circle Blade'}
@@ -361,14 +362,16 @@ windower.register_event('prerender', function()
                     reson.timer = '\\cs(255,0,0)Wait  %.1f\\cr':format(delay - now)
                 else
                     if settings.autows.enabled and settings.autows.close and timer > 1 and now - 1 > delay and reson.waiting then
-                        local player = windower.ffxi.get_player()
-                        if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
-                            if player.vitals.tp > settings.autows.closeTp then
-                                if settings.autows.hpGt < targ.hpp and targ.hpp < settings.autows.hpLt then
-                                    reson.waiting = false
-                                    if (autowsNextWS ~= nil) and (autowsNextWS ~= '') then
-                                        windower.send_command(('input /ws "%s" <t>'):format(autowsNextWS))
-                                        autowsNextWS = ''
+                        if (now - autowsLastCheck) >= settings.autows.closeDelay then
+                            local player = windower.ffxi.get_player()
+                            if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
+                                if player.vitals.tp > settings.autows.closeTp then
+                                    if settings.autows.hpGt < targ.hpp and targ.hpp < settings.autows.hpLt then
+                                        --reson.waiting = false
+                                        if (autowsNextWS ~= nil) and (autowsNextWS ~= '') then
+                                            windower.send_command(('input /ws "%s" <t>'):format(autowsNextWS))
+                                            --autowsNextWS = ''
+                                        end
                                     end
                                 end
                             end
