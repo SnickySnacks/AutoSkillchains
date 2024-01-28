@@ -261,7 +261,7 @@ function find_weaponskill(tempTable, reson)
     
     for x=1,#settings.autows.levelPriority,1 do
         local lp = settings.autows.levelPriority[x]
-        for k=#tt[lp],1,-1 do
+        for k=#tempTable[lp],1,-1 do
             local name = tempTable[lp][k].name
             if not tableContains(settings.autows.blacklist, name) then
                 if lp ~= 3 or tempTable[lp][k].prop == settings.autows.chainPriority or k == 1 then
@@ -300,17 +300,17 @@ function check_results(reson)
     end
     if settings.Show.weapon[info.job] then
         tempTable = get_skills(windower.ffxi.get_abilities().weapon_skills, reson.active, 'weapon_skills', info.aeonic and aeonic_am(reson.step))
-        if settings.autows.enabled and setings.autows.close then
+        if settings.autows.enabled and settings.autows.close then
             tempTable = find_weaponskill(tempTable, reson)
         end
         resultTable = tableCombine(resultTable, tempTable)
     end
     for x=4,1,-1 do
-        for k=#tt[x],1,-1 do
-            t[#t+1] = tt[x][k].text
+        for k=#resultTable[x],1,-1 do
+            outputTable[#outputTable+1] = resultTable[x][k].text
         end
     end
-    return _raw.table.concat(t, '\n')
+    return _raw.table.concat(outputTable, '\n')
 end
 
 function colorize(t)
