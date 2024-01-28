@@ -51,6 +51,7 @@ default.autows.open = true
 default.autows.openTp = 999
 default.autows.openDelay = 0.8
 default.autows.opener = ''
+default.autows.waitForMB = true
 default.autows.close = true
 default.autows.closeTp = 999
 default.autows.levelPriority = {3, 4, 2, 1}
@@ -253,6 +254,8 @@ function tableCombine(dst, src)
 end
 
 function find_weaponskill(tempTable, reson)
+    local last_lp, lastk
+
     for x=1,#settings.autows.levelPriority,1 do
         local lp = settings.autows.levelPriority[x]
         for k=#tempTable[lp],1,-1 do
@@ -373,12 +376,28 @@ windower.register_event('prerender', function()
                     end
                     reson.timer = '\\cs(0,255,0)Go!   %.1f\\cr':format(timer)
                 end
-            elseif settings.Show.burst[info.job] then
-                reson.disp_info = ''
-                reson.timer = 'Burst %d':format(timer)
             else
-                resonating[targ_id] = nil
-                return
+                if settings.autows.enabled and settings.autows.open and not settings.autows.waitForMB then
+                    if (now - autowsLastCheck) >= settings.autows.openDelay then
+                        local player = windower.ffxi.get_player()
+                        if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
+                            if player.vitals.tp > settings.autows.openTp then
+                                if settings.autows.hpGt < targ.hpp and targ.hpp < settings.autows.hpLt then
+                                    if (settings.autows.opener ~= nil) and settings.autows.opener ~= '' then
+                                        windower.send_command(('input /ws "%s" <t>'):format(settings.autows.opener))
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                if settings.Show.burst[info.job] then
+                    reson.disp_info = ''
+                    reson.timer = 'Burst %d':format(timer)
+                else
+                    resonating[targ_id] = nil
+                    return
+                end
             end
             reson.name = res[reson.res][reson.id].name
             reson.props = reson.props or not reson.bound and colorize(reson.active) or 'Chainbound Lv.%d':format(reson.bound)
@@ -387,12 +406,11 @@ windower.register_event('prerender', function()
             skill_props:show()
         else
             if settings.autows.enabled and settings.autows.open then
-                local now = os.clock()
                 if (now - autowsLastCheck) >= settings.autows.openDelay then
                     local player = windower.ffxi.get_player()
                     if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
-                        if player.vitals.tp > 999 then
-                            if 5 < targ.hpp and targ.hpp < 99 then
+                        if player.vitals.tp > settings.autows.openTp then
+                            if settings.autows.hpGt < targ.hpp and targ.hpp < settings.autows.hpLt then
                                 if (settings.autows.opener ~= nil) and settings.autows.opener ~= '' then
                                     windower.send_command(('input /ws "%s" <t>'):format(settings.autows.opener))
                                 end
@@ -557,7 +575,7 @@ windower.register_event('addon command', function(cmd, ...)
             end
         end
                     
-        windower.add_to_chat(207, '[AutoWS: %s] Open: %s, Close: %s @ %d < HP%% < %s':format(settings.autows.enabled and 'ON' or 'OFF', settings.autows.open and settings.autows.opener and settings.autows.opener ~= '' and settings.autows.opener or 'OFF', settings.autows.close and 'ON' or 'OFF', settings.autows.hpGt, settings.autows.hpLt))
+        windower.add_to_chat(207, '[AutoWS: %s] Open: %s, Close: %s, MB: %s @ %d < HP%% < %s':format(settings.autows.enabled and 'ON' or 'OFF', settings.autows.open and settings.autows.opener and settings.autows.opener ~= '' and settings.autows.opener or 'OFF', settings.autows.close and 'ON' or 'OFF', settings.autows.waitForMB and 'ON' or 'OFF', settings.autows.hpGt, settings.autows.hpLt))
     elseif cmd == 'eval' then
         assert(loadstring(table.concat({...}, ' ')))()
     else
