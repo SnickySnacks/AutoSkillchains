@@ -57,7 +57,7 @@ default.autows.levelPriority = {3, 4, 2, 1}
 default.autows.chainPriority = 'Darkness'
 default.autows.blacklist = {'Cyclone','Aeolian Edge','Fell Cleave','Sonic Thrust','Spinning Attack','Shockwave','Earth Crusher','Cataclysm','Spinning Scythe','Circle Blade'}
 default.autows.hpGt = 3
-default.autows.hpLt = 99
+default.autows.hpLt = 100
 
 settings = config.load(default)
 settings.autows.enabled = false --Always disabled to start
@@ -226,9 +226,6 @@ function get_skills(abilities, active, resource, AM)
                 local temp = {}
                 temp.name = res[resource][ability_id].name
                 temp.prop = prop
-                temp.text = settings.color and
-                    '%-16s → Lv.%d %s%-14s\\cr':format(res[resource][ability_id].name, lv, colors[prop], prop) or
-                    '%-16s → Lv.%d %-14s':format(res[resource][ability_id].name, lv, prop)
                 tt[lv][#tt[lv]+1] = temp
             end
         end
@@ -256,9 +253,6 @@ function tableCombine(dst, src)
 end
 
 function find_weaponskill(tempTable, reson)
---    local tt = {{},{},{},{}}
---    tt = get_skills(windower.ffxi.get_abilities().weapon_skills, reson.active, 'weapon_skills', info.aeonic and aeonic_am(reson.step))
-    
     for x=1,#settings.autows.levelPriority,1 do
         local lp = settings.autows.levelPriority[x]
         for k=#tempTable[lp],1,-1 do
@@ -266,7 +260,6 @@ function find_weaponskill(tempTable, reson)
             if not tableContains(settings.autows.blacklist, name) then
                 if lp ~= 3 or tempTable[lp][k].prop == settings.autows.chainPriority or k == 1 then
                     autowsNextWS = tempTable[lp][k].name
-                    tempTable[lp][k].text = tempTable[lp][k].text .. '*'
                     return tempTable
                 else
                     last_lp = lp
@@ -276,7 +269,6 @@ function find_weaponskill(tempTable, reson)
         end
         if (last_lp ~= nil) and (last_k ~= nil) then
             autowsNextWS = tempTable[last_lp][last_k].name
-            tempTable[last_lp][last_k].text = '*' .. tempTable[last_lp][last_k].text
             return tempTable
         end
     end
@@ -305,9 +297,19 @@ function check_results(reson)
         end
         resultTable = tableCombine(resultTable, tempTable)
     end
+    local once = true
     for x=4,1,-1 do
         for k=#resultTable[x],1,-1 do
-            outputTable[#outputTable+1] = resultTable[x][k].text
+            if once and autowsNextWS and resultTable[x][k].name == autowsNextWS then
+                once = false
+                outputTable[#outputTable+1] = settings.color and
+                    '*%-15s → Lv.%d %s%-14s\\cr':format(resultTable[x][k].name, x, colors[resultTable[x][k].prop], resultTable[x][k].prop) or
+                    '*%-15s → Lv.%d %-14s':format(resultTable[x][k].name, x, resultTable[x][k].prop)
+            else
+                outputTable[#outputTable+1] = settings.color and
+                    '%-16s → Lv.%d %s%-14s\\cr':format(resultTable[x][k].name, x, colors[resultTable[x][k].prop], resultTable[x][k].prop) or
+                    '%-16s → Lv.%d %-14s':format(resultTable[x][k].name, x, resultTable[x][k].prop)
+            end
         end
     end
     return _raw.table.concat(outputTable, '\n')
