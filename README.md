@@ -24,6 +24,8 @@ AutoWS settings.  Most settings are currently only available in settings.xml
     close         -- close skillchains
     
     closeTp       -- minimum tp to weaponskill when closing
+
+    closeDelay    -- delay between weaponskill attempts, to avoid spamming
     
     levelPriority -- the priority of what skillchain level to make, remove a level to avoid it entirely
     
@@ -31,7 +33,7 @@ AutoWS settings.  Most settings are currently only available in settings.xml
     
     blacklist     -- all the aoe weaponskills you probably don't want to use
     
-    hpGt          -- percentage of hps the mob must be above when considering to weaponskill
+    hpGt          -- percentage of hps the mob must be above when considering to weaponskill, helps avoid overkill
     
     hpLt          -- percentage of hps the mob must be below when considering to weaponskill, helps avoid (too far)
 
