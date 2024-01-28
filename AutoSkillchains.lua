@@ -362,7 +362,7 @@ windower.register_event('prerender', function()
                                 if settings.autows.hpGt < targ.hpp and targ.hpp < settings.autows.hpLt then
                                     reson.waiting = false
                                     if (autowsNextWS ~= nil) and (autowsNextWS ~= '') then
-                                        windower.send_command(('input /ws "%s" <t>'):format(ws))
+                                        windower.send_command(('input /ws "%s" <t>'):format(autowsNextWS))
                                         autowsNextWS = ''
                                     end
                                 end
