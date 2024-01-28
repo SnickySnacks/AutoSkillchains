@@ -1,5 +1,6 @@
 --[[
-Copyright © 2017, Ivaar
+Copyright © 2023, SnickySnacks
+Based on Skillchains by Ivaar and AutoWS by Lorand
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -17,7 +18,7 @@ modification, are permitted provided that the following conditions are met:
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL IVAAR BE LIABLE FOR ANY
+DISCLAIMED. IN NO EVENT SHALL SNICKYSNACKS BE LIABLE FOR ANY
 DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -25,10 +26,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
-_addon.author = 'Ivaar'
-_addon.command = 'sc'
-_addon.name = 'SkillChains'
-_addon.version = '2.20.08.25'
+_addon.author = 'SnickySnacks'
+_addon.command = 'asc'
+_addon.name = 'AutoSkillChains'
+_addon.version = '1.24.01.28'
 
 require('luau')
 require('pack')
@@ -44,8 +45,22 @@ default.UpdateFrequency = 0.2
 default.aeonic = false
 default.color = false
 default.display = {text={size=12,font='Consolas'},pos={x=0,y=0},bg={visible=true}}
+default.autows = {}
+default.autows.enabled = false
+default.autows.open = true
+default.autows.openTp = 999
+default.autows.openDelay = 0.8
+default.autows.opener = ''
+default.autows.close = true
+default.autows.closeTp = 999
+default.autows.levelPriority = {3, 4, 2, 1}
+default.autows.chainPriority = 'Darkness'
+default.autows.blacklist = {'Cyclone','Aeolian Edge','Fell Cleave','Sonic Thrust','Spinning Attack','Shockwave','Earth Crusher','Cataclysm','Spinning Scythe','Circle Blade'}
+default.autows.hpGt = 3
+default.autows.hpLt = 99
 
 settings = config.load(default)
+settings.autows.enabled = false --Always disabled to start
 skill_props = texts.new('',settings.display,settings)
 message_ids = S{110,185,187,317,802}
 skillchain_ids = S{288,289,290,291,292,293,294,295,296,297,298,299,300,301,385,386,387,388,389,390,391,392,393,394,395,396,397,767,768,769,770}
@@ -53,6 +68,7 @@ buff_dur = {[163]=40,[164]=30,[470]=60}
 info = {}
 resonating = {}
 buffs = {}
+local autowsNextWS = ''
 
 colors = {}            -- Color codes by Sammeh
 colors.Light =         '\\cs(255,255,255)'
@@ -198,7 +214,7 @@ function check_props(old, new)
     end
 end
 
-function add_skills(t, abilities, active, resource, AM)
+function get_skills(abilities, active, resource, AM)
     local tt = {{},{},{},{}}
     for k=1,#abilities do
         local ability_id = abilities[k]
@@ -207,31 +223,92 @@ function add_skills(t, abilities, active, resource, AM)
             local lv, prop, aeonic = check_props(active, aeonic_prop(skillchain, info.player))
             if prop then
                 prop = AM and aeonic or prop
-                tt[lv][#tt[lv]+1] = settings.color and
+                local temp = {}
+                temp.name = res[resource][ability_id].name
+                temp.prop = prop
+                temp.text = settings.color and
                     '%-16s → Lv.%d %s%-14s\\cr':format(res[resource][ability_id].name, lv, colors[prop], prop) or
                     '%-16s → Lv.%d %-14s':format(res[resource][ability_id].name, lv, prop)
+                tt[lv][#tt[lv]+1] = temp
             end
         end
     end
-    for x=4,1,-1 do
-        for k=#tt[x],1,-1 do
-            t[#t+1] = tt[x][k]
+    return tt;
+end
+
+function tableContains(testtable, value)
+  for i = 1,#testtable do
+    if (testtable[i] == value) then
+      return true
+    end
+  end
+  return false
+end
+
+function tableCombine(dst, src)
+    for i = 1,#src do
+        for j = 1,#src[i] do
+            dst[i][#dst[i]+1] = src[i][j]
         end
     end
-    return t
+    
+    return dst
+end
+
+function find_weaponskill(tempTable, reson)
+--    local tt = {{},{},{},{}}
+--    tt = get_skills(windower.ffxi.get_abilities().weapon_skills, reson.active, 'weapon_skills', info.aeonic and aeonic_am(reson.step))
+    
+    for x=1,#settings.autows.levelPriority,1 do
+        local lp = settings.autows.levelPriority[x]
+        for k=#tt[lp],1,-1 do
+            local name = tempTable[lp][k].name
+            if not tableContains(settings.autows.blacklist, name) then
+                if lp ~= 3 or tempTable[lp][k].prop == settings.autows.chainPriority or k == 1 then
+                    autowsNextWS = tempTable[lp][k].name
+                    tempTable[lp][k].text = '*' .. tempTable[lp][k].text
+                    return tempTable
+                else
+                    last_lp = lp
+                    last_k = k
+                end
+            end
+        end
+        if (last_lp ~= nil) and (last_k ~= nil) then
+            autowsNextWS = tempTable[last_lp][last_k].name
+            tempTable[last_lp][last_k].text = '*' .. tempTable[last_lp][last_k].text
+            return tempTable
+        end
+    end
+    
+    return tempTable
 end
 
 function check_results(reson)
-    local t = {}
+    local tempTable = {{},{},{},{}}
+    local resultTable = {{},{},{},{}}
+    local outputTable = {}
     if settings.Show.spell[info.job] and info.job == 'SCH' then
-        t = add_skills(t, {0,1,2,3,4,5,6,7}, reson.active, 'elements')
+        tempTable = get_skills({0,1,2,3,4,5,6,7}, reson.active, 'elements')
+        resultTable = tableCombine(resultTable, tempTable)
     elseif settings.Show.spell[info.job] and info.job == 'BLU' then
-        t = add_skills(t, windower.ffxi.get_mjob_data().spells, reson.active, 'spells')
+        tempTable = get_skills(windower.ffxi.get_mjob_data().spells, reson.active, 'spells')
+        resultTable = tableCombine(resultTable, tempTable)
     elseif settings.Show.pet[info.job] and windower.ffxi.get_mob_by_target('pet') then
-        t = add_skills(t, windower.ffxi.get_abilities().job_abilities, reson.active, 'job_abilities')
+        tempTable = get_skills(windower.ffxi.get_abilities().job_abilities, reson.active, 'job_abilities')
+        resultTable = tableCombine(resultTable, tempTable)
     end
     if settings.Show.weapon[info.job] then
-        t = add_skills(t, windower.ffxi.get_abilities().weapon_skills, reson.active, 'weapon_skills', info.aeonic and aeonic_am(reson.step))
+        tempTable = get_skills(windower.ffxi.get_abilities().weapon_skills, reson.active, 'weapon_skills', info.aeonic and aeonic_am(reson.step))
+        if settings.autows.enabled and setings.autows.close then
+            tempTable = find_weaponskill(tempTable, reson)
+        end
+        resultTable = tableCombine(resultTable, tempTable)
+    end
+    for x=4,1,-1 do
+        for k=#tt[x],1,-1 do
+            t[#t+1] = tt[x][k].text
+        end
     end
     return _raw.table.concat(t, '\n')
 end
@@ -269,25 +346,63 @@ windower.register_event('prerender', function()
     local reson = resonating[targ_id]
     local timer = reson and (reson.times - now) or 0
 
-    if targ and targ.hpp > 0 and timer > 0 then
-        if not reson.closed then
-            reson.disp_info = reson.disp_info or check_results(reson)
-            local delay = reson.delay
-            reson.timer = now < delay and
-                '\\cs(255,0,0)Wait  %.1f\\cr':format(delay - now) or
-                '\\cs(0,255,0)Go!   %.1f\\cr':format(timer)
-        elseif settings.Show.burst[info.job] then
-            reson.disp_info = ''
-            reson.timer = 'Burst %d':format(timer)
+    if targ and targ.hpp > 0 then
+        if timer > 0 then
+            if not reson.closed then
+                reson.disp_info = reson.disp_info or check_results(reson)
+                local delay = reson.delay
+                if now < delay then
+                    reson.waiting = true
+                    reson.timer = '\\cs(255,0,0)Wait  %.1f\\cr':format(delay - now)
+                else
+                    if settings.autows.enabled and settings.autows.close and timer > 1 and now - 1 > delay and reson.waiting then
+                        local player = windower.ffxi.get_player()
+                        if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
+                            if player.vitals.tp > settings.autows.closeTp then
+                                if settings.autows.hpGt < targ.hpp and targ.hpp < settings.autows.hpLt then
+                                    reson.waiting = false
+                                    if (autowsNextWS ~= nil) and (autowsNextWS ~= '') then
+                                        windower.send_command(('input /ws "%s" <t>'):format(ws))
+                                        autowsNextWS = ''
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    reson.timer = '\\cs(0,255,0)Go!   %.1f\\cr':format(timer)
+                end
+            elseif settings.Show.burst[info.job] then
+                reson.disp_info = ''
+                reson.timer = 'Burst %d':format(timer)
+            else
+                resonating[targ_id] = nil
+                return
+            end
+            reson.name = res[reson.res][reson.id].name
+            reson.props = reson.props or not reson.bound and colorize(reson.active) or 'Chainbound Lv.%d':format(reson.bound)
+            reson.elements = reson.elements or reson.step > 1 and settings.Show.burst[info.job] and '(%s)':format(colorize(sc_info[reson.active[1]])) or ''
+            skill_props:update(reson)
+            skill_props:show()
         else
-            resonating[targ_id] = nil
-            return
+            if settings.autows.enabled and settings.autows.open then
+                local now = os.clock()
+                if (now - autowsLastCheck) >= settings.autows.openDelay then
+                    local player = windower.ffxi.get_player()
+                    if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
+                        if player.vitals.tp > 999 then
+                            if 5 < targ.hpp and targ.hpp < 99 then
+                                if (settings.autows.opener ~= nil) and settings.autows.opener ~= '' then
+                                    windower.send_command(('input /ws "%s" <t>'):format(settings.autows.opener))
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            if not visible then
+                skill_props:hide()
+            end
         end
-        reson.name = res[reson.res][reson.id].name
-        reson.props = reson.props or not reson.bound and colorize(reson.active) or 'Chainbound Lv.%d':format(reson.bound)
-        reson.elements = reson.elements or reson.step > 1 and settings.Show.burst[info.job] and '(%s)':format(colorize(sc_info[reson.active[1]])) or ''
-        skill_props:update(reson)
-        skill_props:show()
     elseif not visible then
         skill_props:hide()
     end
@@ -431,6 +546,16 @@ windower.register_event('addon command', function(cmd, ...)
     elseif type(default[cmd]) == 'boolean' then
         settings[cmd] = not settings[cmd]
         windower.add_to_chat(207, '%s: %s %s':format(_addon.name, cmd, settings[cmd] and 'on' or 'off'))
+    elseif cmd == 'autows' then
+        if ... then
+            if ...:lower() == 'on' then
+                settings.autows.enabled = true
+            elseif ...:lower() == 'off' then
+                settings.autows.enabled = false
+            end
+        end
+                    
+        windower.add_to_chat(207, '[AutoWS: %s] Open: %s, Close: %s @ %d < HP%% < %s':format(settings.autows.enabled and 'ON' or 'OFF', settings.autows.open and settings.autows.opener and settings.autows.opener ~= '' and settings.autows.opener or 'OFF', settings.autows.close and 'ON' or 'OFF', settings.autows.hpGt, settings.autows.hpLt))
     elseif cmd == 'eval' then
         assert(loadstring(table.concat({...}, ' ')))()
     else
@@ -448,6 +573,7 @@ end)
 
 windower.register_event('zone change', function()
     resonating = {}
+    autowsLastCheck = os.clock() + 15
 end)
 
 windower.register_event('load', function()
@@ -459,6 +585,7 @@ windower.register_event('load', function()
         info.range_bag = equip.range_bag
         update_weapon()
         buffs[info.player] = {}
+        autowsLastCheck = os.clock()
     end
 end)
 
