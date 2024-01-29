@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.24.01.28'
+_addon.version = '1.24.01.29'
 
 require('luau')
 require('pack')
@@ -276,7 +276,8 @@ function find_weaponskill(tempTable, reson)
             return tempTable
         end
     end
-    
+
+    autowsNextWS = ''
     return tempTable
 end
 
