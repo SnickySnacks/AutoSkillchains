@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.24.01.29'
+_addon.version = '1.24.01.30'
 
 require('luau')
 require('pack')
@@ -55,14 +55,14 @@ default.autows.waitForMB = true
 default.autows.close = true
 default.autows.closeTp = 999
 default.autows.closeDelay = 0.8
-default.autows.levelPriority = {3, 4, 2, 1}
+default.autows.levelPriority = L{'dummy',3,4,2,1} -- 'dummy' required to keep the list from breaking if there is only 1 number
 default.autows.chainPriority = 'Darkness'
-default.autows.blacklist = {'Cyclone','Aeolian Edge','Fell Cleave','Sonic Thrust','Spinning Attack','Shockwave','Earth Crusher','Cataclysm','Spinning Scythe','Circle Blade'}
+default.autows.closeWsPriority = ''
+default.autows.blacklist = L{'Cyclone','Aeolian Edge','Fell Cleave','Sonic Thrust','Spinning Attack','Shockwave','Earth Crusher','Cataclysm','Spinning Scythe','Circle Blade'}
 default.autows.hpGt = 3
 default.autows.hpLt = 100
 
 settings = config.load(default)
-settings.autows.enabled = false --Always disabled to start
 skill_props = texts.new('',settings.display,settings)
 message_ids = S{110,185,187,317,802}
 skillchain_ids = S{288,289,290,291,292,293,294,295,296,297,298,299,300,301,385,386,387,388,389,390,391,392,393,394,395,396,397,767,768,769,770}
@@ -166,8 +166,41 @@ initialize = function(text, settings)
     properties:append('${disp_info}')
     text:clear()
     text:append(properties:concat('\n'))
+
+    print_autows_status()
 end
 skill_props:register_event('reload', initialize)
+
+function print_autows_status()
+    if #settings.autows.levelPriority < 2 then
+        settings.autows.close = false
+    end
+
+    windower.add_to_chat(207, '[AutoWS: %s] Open: %s, Close: %s, MB: %s @ %d < HP%% < %s':format(settings.autows.enabled and 'ON' or 'OFF', settings.autows.open and settings.autows.opener and settings.autows.opener ~= '' and settings.autows.opener or 'OFF', settings.autows.close and 'ON' or 'OFF', settings.autows.waitForMB and 'ON' or 'OFF', settings.autows.hpGt, settings.autows.hpLt))
+    if settings.autows.close then
+        local levelPriority = ''
+        local chainPriority = ''
+        for x=2,#settings.autows.levelPriority,1 do
+            if x > 2 then
+                levelPriority = levelPriority..' -> '
+            end
+            levelPriority = levelPriority..settings.autows.levelPriority[x]
+        end
+        if settings.autows.chainPriority ~= '' or settings.autows.closeWsPriority ~= '' then
+            chainPriority = ', Prioritizing '
+            if settings.autows.chainPriority ~= '' then
+                chainPriority = chainPriority..settings.autows.chainPriority
+            end
+            if settings.autows.closeWsPriority ~= '' then
+                if settings.autows.chainPriority ~= '' then
+                    chainPriority = chainPriority..' and '
+                end
+                chainPriority = chainPriority..settings.autows.closeWsPriority
+            end
+        end
+        windower.add_to_chat(207, 'Closing Level %s%s':format(levelPriority, chainPriority))
+    end
+end
 
 function update_weapon()
     if not settings.Show.weapon[info.job] then
@@ -255,19 +288,24 @@ function tableCombine(dst, src)
 end
 
 function find_weaponskill(tempTable, reson)
-    local last_lp, lastk
+    local last_lp, lastk, last_prop
 
-    for x=1,#settings.autows.levelPriority,1 do
-        local lp = settings.autows.levelPriority[x]
-        for k=#tempTable[lp],1,-1 do
+    for x=2,#settings.autows.levelPriority,1 do
+        local lp = tonumber(settings.autows.levelPriority[x])
+           for k=#tempTable[lp],1,-1 do
             local name = tempTable[lp][k].name
             if not tableContains(settings.autows.blacklist, name) then
-                if lp ~= 3 or tempTable[lp][k].prop == settings.autows.chainPriority or k == 1 then
-                    autowsNextWS = tempTable[lp][k].name
-                    return tempTable
-                else
+                if lp ~= 3 or settings.autows.chainPriority == '' or tempTable[lp][k].prop == settings.autows.chainPriority then
+                    if lp ~= 3 or settings.autows.wsPriority == '' or name == settings.autows.wsPriority then
+                        autowsNextWS = name
+                        return tempTable
+                    end
+                end
+
+                if (last_prop == nil) or (lp == 3 and settings.autows.chainPriority ~= '' and last_prop ~= settings.autows.chainPriority and tempTable[lp][k].prop == settings.autows.chainPriority) then
                     last_lp = lp
                     last_k = k
+                    last_prop = tempTable[lp][k].prop
                 end
             end
         end
@@ -578,7 +616,8 @@ windower.register_event('addon command', function(cmd, ...)
                 settings.autows.enabled = false
             end
         end
-                    
+        
+        print_autows_status()
         windower.add_to_chat(207, '[AutoWS: %s] Open: %s, Close: %s, MB: %s @ %d < HP%% < %s':format(settings.autows.enabled and 'ON' or 'OFF', settings.autows.open and settings.autows.opener and settings.autows.opener ~= '' and settings.autows.opener or 'OFF', settings.autows.close and 'ON' or 'OFF', settings.autows.waitForMB and 'ON' or 'OFF', settings.autows.hpGt, settings.autows.hpLt))
     elseif cmd == 'eval' then
         assert(loadstring(table.concat({...}, ' ')))()
