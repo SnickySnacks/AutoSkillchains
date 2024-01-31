@@ -166,8 +166,6 @@ initialize = function(text, settings)
     properties:append('${disp_info}')
     text:clear()
     text:append(properties:concat('\n'))
-
-    print_autows_status()
 end
 skill_props:register_event('reload', initialize)
 
@@ -175,8 +173,15 @@ function print_autows_status()
     if #settings.autows.levelPriority < 2 then
         settings.autows.close = false
     end
-
-    windower.add_to_chat(207, '[AutoWS: %s] Open: %s, Close: %s, MB: %s @ %d < HP%% < %s':format(settings.autows.enabled and 'ON' or 'OFF', settings.autows.open and settings.autows.opener and settings.autows.opener ~= '' and settings.autows.opener or 'OFF', settings.autows.close and 'ON' or 'OFF', settings.autows.waitForMB and 'ON' or 'OFF', settings.autows.hpGt, settings.autows.hpLt))
+    local openerText = 'OFF'
+    if settings.autows.open then
+        if not info.openerValid then
+            openerText = openerText..' (Wrong weapon)'
+        elseif settings.autows.opener ~= '' then
+            openerText = settings.autows.opener
+        end
+    end
+    windower.add_to_chat(207, '[AutoWS: %s] Open: %s, Close: %s, MB: %s @ %d < HP%% < %s':format(settings.autows.enabled and 'ON' or 'OFF', openerText, settings.autows.close and 'ON' or 'OFF', settings.autows.waitForMB and 'ON' or 'OFF', settings.autows.hpGt, settings.autows.hpLt))
     if settings.autows.close then
         local levelPriority = ''
         local chainPriority = ''
@@ -213,6 +218,32 @@ function update_weapon()
     end
     if not check_weapon or coroutine.status(check_weapon) ~= 'suspended' then
         check_weapon = coroutine.schedule(update_weapon, 10)
+    end
+end
+
+function update_opener()
+    if not settings.Show.weapon[info.job] then
+        return
+    end
+    local main_weapon = windower.ffxi.get_items(info.main_bag, info.main_weapon).id
+    if main_weapon ~= 0 then
+        if info.last_weapon ~= main_weapon and settings.autows.opener ~= '' then
+            info.last_weapon = main_weapon
+            local weaponskills = windower.ffxi.get_abilities().weapon_skills
+            
+            for x=1,#weaponskills,1 do
+                if res['weapon_skills'][weaponskills[x]].name == settings.autows.opener then
+                    info.openerValid = true
+                    print_autows_status()
+                    return
+                end
+            end
+            info.openerValid = false
+            print_autows_status()
+        end
+    end
+    if not check_opener or coroutine.status(check_opener) ~= 'suspended' then
+        check_opener = coroutine.schedule(update_opener, 10)
     end
 end
 
@@ -425,7 +456,7 @@ windower.register_event('prerender', function()
                         if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
                             if player.vitals.tp > settings.autows.openTp then
                                 if settings.autows.hpGt < targ.hpp and targ.hpp < settings.autows.hpLt then
-                                    if (settings.autows.opener ~= nil) and settings.autows.opener ~= '' then
+                                    if info.openerValid and settings.autows.opener ~= '' then
                                         windower.send_command(('input /ws "%s" <t>'):format(settings.autows.opener))
                                     end
                                 end
@@ -453,7 +484,7 @@ windower.register_event('prerender', function()
                     if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
                         if player.vitals.tp > settings.autows.openTp then
                             if settings.autows.hpGt < targ.hpp and targ.hpp < settings.autows.hpLt then
-                                if (settings.autows.opener ~= nil) and settings.autows.opener ~= '' then
+                                if info.openerValid and settings.autows.opener ~= '' then
                                     windower.send_command(('input /ws "%s" <t>'):format(settings.autows.opener))
                                 end
                             end
@@ -575,6 +606,8 @@ windower.register_event('incoming chunk', function(id, data)
             end
         end
         buffs[info.player] = set_buff
+    elseif id == 0xAC then
+        update_opener()
     end
 end)
 
@@ -618,7 +651,6 @@ windower.register_event('addon command', function(cmd, ...)
         end
         
         print_autows_status()
-        windower.add_to_chat(207, '[AutoWS: %s] Open: %s, Close: %s, MB: %s @ %d < HP%% < %s':format(settings.autows.enabled and 'ON' or 'OFF', settings.autows.open and settings.autows.opener and settings.autows.opener ~= '' and settings.autows.opener or 'OFF', settings.autows.close and 'ON' or 'OFF', settings.autows.waitForMB and 'ON' or 'OFF', settings.autows.hpGt, settings.autows.hpLt))
     elseif cmd == 'eval' then
         assert(loadstring(table.concat({...}, ' ')))()
     else
@@ -631,6 +663,9 @@ windower.register_event('job change', function(job, lvl)
     if job ~= info.job then
         info.job = job
         config.reload(settings)
+        settings.autows.enabled = false
+        autowsNextWS = ''
+        print_autows_status()
     end
 end)
 
@@ -647,16 +682,20 @@ windower.register_event('load', function()
         info.range = equip.range
         info.range_bag = equip.range_bag
         update_weapon()
+        update_opener()
         buffs[info.player] = {}
         autowsLastCheck = os.clock()
     end
 end)
 
 windower.register_event('unload', function()
+    coroutine.closer(check_opener)
     coroutine.close(check_weapon)
 end)
 
 windower.register_event('logout', function()
+    coroutine.closer(check_opener)
+    check_opener = nil
     coroutine.close(check_weapon)
     check_weapon = nil
     info = {}
