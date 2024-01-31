@@ -242,7 +242,6 @@ function update_weapon()
         return
     end
     if not check_weapon or coroutine.status(check_weapon) ~= 'suspended' then
-        windower.add_to_chat(207, "??? #1")
         check_weapon = coroutine.schedule(update_weapon, 10)
     end
 end
@@ -274,7 +273,6 @@ function update_opener()
         return
     end
     if not check_opener or coroutine.status(check_opener) ~= 'suspended' then
-        windower.add_to_chat(207, "??? #2")
         check_opener = coroutine.schedule(update_opener, 10)
     end
 end
@@ -469,7 +467,6 @@ windower.register_event('prerender', function()
                             if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
                                 if player.vitals.tp > autows.closeTp then
                                     if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
-                                        --reson.waiting = false
                                         if (autowsNextWS ~= nil) and (autowsNextWS ~= '') then
                                             windower.send_command(('input /ws "%s" <t>'):format(autowsNextWS))
                                             autowsLastCheck = now
