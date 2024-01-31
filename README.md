@@ -7,7 +7,8 @@ AutoWS doesn't have a lot of commands for setting the config yet, sorry
 
     //asc autows on/off -- turns autows on or off
 
-AutoWS settings.  Most settings are currently only available in settings.xml
+AutoWS settings.  Most settings are currently only available in autows-default.xml.
+Create an autows-job.xml for job specific config, i.e. autows-PUP.xml
 
     enabled         -- autows is enabled
     
