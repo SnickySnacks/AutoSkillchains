@@ -9,36 +9,41 @@ AutoWS doesn't have a lot of commands for setting the config yet, sorry
 
 AutoWS settings.  Most settings are currently only available in autows-default.xml.
 Create an autows-job.xml for job specific config, i.e. autows-PUP.xml
+Make a subdirectory with your character name for character specific configs, i.e. data\Snicky\autows-PUP.xml
 
-    enabled         -- autows is enabled
+    enabled            -- autows is enabled
     
-    open            -- open skillchains
+    open               -- open skillchains
     
-    openTp          -- minimum tp to weaponskill when opening
+    openTp             -- minimum tp to weaponskill when opening
     
-    openDelay       -- delay between weaponskill attempts, to avoid spamming
+    openWsDelay        -- delay between weaponskill attempts, to avoid spamming
     
-    opener          -- weaponskill to use when opening
+    opener             -- weaponskill to use when opening
     
-    waitForMB       -- whether to wait for the magic burst window to close before opening a new skillchain
+    waitForMB          -- whether to wait for the magic burst window to close before opening a new skillchain
     
-    close           -- close skillchains
+    close              -- close skillchains
     
-    closeTp         -- minimum tp to weaponskill when closing
+    closeTp            -- minimum tp to weaponskill when closing
 
-    closeDelay      -- delay between weaponskill attempts, to avoid spamming
-    
-    levelPriority   -- the priority of what skillchain level to make, remove a level to avoid it entirely
-    
-    chainPriority   -- prioritize Light or Darkness when making a level 3 skillchain
+    closeWsDelay       -- delay between weaponskill attempts, to avoid spamming
 
-    closeWsPriority -- after checking chainPriority, which weaponskill should be used
+    closeWindowDelay   -- delay after window opens before attempting to weaponskill
+
+    closeWindowMinimum -- minimum amount of time that can be remaining in the window and still attempt a weaponskill
     
-    blacklist       -- all the aoe weaponskills you probably don't want to use
+    levelPriority      -- the priority of what skillchain level to make, remove a level to avoid it entirely
     
-    hpGt            -- percentage of hps the mob must be above when considering to weaponskill, helps avoid overkill
+    chainPriority      -- prioritize Light or Darkness when making a level 3 skillchain
+
+    closeWsPriority    -- after checking chainPriority, which weaponskill should be used
     
-    hpLt            -- percentage of hps the mob must be below when considering to weaponskill, helps avoid (too far)
+    blacklist          -- all the aoe weaponskills you probably don't want to use
+    
+    hpGt               -- percentage of hps the mob must be above when considering to weaponskill, helps avoid overkill
+    
+    hpLt               -- percentage of hps the mob must be below when considering to weaponskill, helps avoid (too far)
 
 Displays a text object containing skillchain elements resonating on current target, timer for skillchain window,
 along with a list of weapon skills that can skillchain based on the weapon you have currently equipped. 
