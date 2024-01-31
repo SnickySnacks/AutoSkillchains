@@ -36,6 +36,7 @@ require('pack')
 require('actions')
 texts = require('texts')
 skills = require('skills')
+file = require('files')
 
 _static = S{'WAR','MNK','WHM','BLM','RDM','THF','PLD','DRK','BST','BRD','RNG','SAM','NIN','DRG','SMN','BLU','COR','PUP','DNC','SCH','GEO','RUN'}
 
@@ -45,24 +46,25 @@ default.UpdateFrequency = 0.2
 default.aeonic = false
 default.color = false
 default.display = {text={size=12,font='Consolas'},pos={x=0,y=0},bg={visible=true}}
-default.autows = {}
-default.autows.enabled = false
-default.autows.open = true
-default.autows.openTp = 999
-default.autows.openDelay = 0.8
-default.autows.opener = ''
-default.autows.waitForMB = true
-default.autows.close = true
-default.autows.closeTp = 999
-default.autows.closeDelay = 0.8
-default.autows.levelPriority = L{'dummy',3,4,2,1} -- 'dummy' required to keep the list from breaking if there is only 1 number
-default.autows.chainPriority = 'Darkness'
-default.autows.closeWsPriority = ''
-default.autows.blacklist = L{'Cyclone','Aeolian Edge','Fell Cleave','Sonic Thrust','Spinning Attack','Shockwave','Earth Crusher','Cataclysm','Spinning Scythe','Circle Blade'}
-default.autows.hpGt = 3
-default.autows.hpLt = 100
+default_autows = {}
+default_autows.enabled = false
+default_autows.open = true
+default_autows.openTp = 999
+default_autows.openDelay = 0.5
+default_autows.opener = ''
+default_autows.waitForMB = true
+default_autows.close = true
+default_autows.closeTp = 999
+default_autows.closeDelay = 0.5
+default_autows.levelPriority = L{'dummy',3,4,2,1} -- 'dummy' required to keep the list from breaking if there is only 1 number
+default_autows.chainPriority = ''
+default_autows.closeWsPriority = ''
+default_autows.blacklist = L{'Cyclone','Aeolian Edge','Fell Cleave','Sonic Thrust','Spinning Attack','Shockwave','Earth Crusher','Cataclysm','Spinning Scythe','Circle Blade'}
+default_autows.hpGt = 3
+default_autows.hpLt = 100
 
 settings = config.load(default)
+
 skill_props = texts.new('',settings.display,settings)
 message_ids = S{110,185,187,317,802}
 skillchain_ids = S{288,289,290,291,292,293,294,295,296,297,298,299,300,301,385,386,387,388,389,390,391,392,393,394,395,396,397,767,768,769,770}
@@ -150,6 +152,12 @@ initialize = function(text, settings)
         local player = windower.ffxi.get_player()
         info.job = player.main_job
         info.player = player.id
+
+        load_autows()
+
+        if autows.enabled then
+            schedule_autows_status()
+        end
     end
     local properties = L{}
     if settings.Show.timer[info.job] then
@@ -169,38 +177,55 @@ initialize = function(text, settings)
 end
 skill_props:register_event('reload', initialize)
 
+function schedule_autows_status()
+    coroutine.close(print_status)
+    print_status = coroutine.schedule(print_autows_status, 1)
+end
+
+function load_autows()
+    if file.exists('data\\autows-'..info.job..'.xml') then
+        default_filt = false
+        autows = config.load('data\\autows-'..info.job..'.xml', default_autows, false)
+    elseif not default_filt then
+        default_filt = true
+        autows = config.load('data\\autows-default.xml', default_autows, false)
+    end
+end
+
 function print_autows_status()
-    if #settings.autows.levelPriority < 2 then
-        settings.autows.close = false
+    
+    if #autows.levelPriority < 2 then
+        autows.close = false
     end
     local openerText = 'OFF'
-    if settings.autows.open then
+    if autows.open and autows.opener ~= '' then
         if not info.openerValid then
             openerText = openerText..' (Wrong weapon)'
-        elseif settings.autows.opener ~= '' then
-            openerText = settings.autows.opener
+        else
+            openerText = autows.opener
         end
     end
-    windower.add_to_chat(207, '[AutoWS: %s] Open: %s, Close: %s, MB: %s @ %d < HP%% < %s':format(settings.autows.enabled and 'ON' or 'OFF', openerText, settings.autows.close and 'ON' or 'OFF', settings.autows.waitForMB and 'ON' or 'OFF', settings.autows.hpGt, settings.autows.hpLt))
-    if settings.autows.close then
+
+    windower.add_to_chat(207, '[AutoWS%s: %s] Open: %s, Close: %s, MB: %s @ %d < HP%% < %s':format(not default_filt and '('..string.upper(info.job)..')' or '', autows.enabled and 'ON' or 'OFF', openerText, autows.close and 'ON' or 'OFF', autows.waitForMB and 'ON' or 'OFF', autows.hpGt, autows.hpLt))
+    if autows.close then
         local levelPriority = ''
         local chainPriority = ''
-        for x=2,#settings.autows.levelPriority,1 do
+        for x=2,#autows.levelPriority,1 do
             if x > 2 then
                 levelPriority = levelPriority..' -> '
             end
-            levelPriority = levelPriority..settings.autows.levelPriority[x]
+            levelPriority = levelPriority..autows.levelPriority[x]
         end
-        if settings.autows.chainPriority ~= '' or settings.autows.closeWsPriority ~= '' then
+        if autows.chainPriority ~= '' or autows.closeWsPriority ~= '' then
             chainPriority = ', Prioritizing '
-            if settings.autows.chainPriority ~= '' then
-                chainPriority = chainPriority..settings.autows.chainPriority
+            if autows.chainPriority ~= '' then
+                chainPriority = chainPriority..autows.chainPriority
             end
-            if settings.autows.closeWsPriority ~= '' then
-                if settings.autows.chainPriority ~= '' then
+            if autows.closeWsPriority ~= '' then
+                if autows.chainPriority ~= '' then
                     chainPriority = chainPriority..' and '
                 end
-                chainPriority = chainPriority..settings.autows.closeWsPriority
+                chainPriority = chainPriority..autows.closeWsPriority
             end
         end
         windower.add_to_chat(207, 'Closing Level %s%s':format(levelPriority, chainPriority))
@@ -217,6 +242,7 @@ function update_weapon()
         return
     end
     if not check_weapon or coroutine.status(check_weapon) ~= 'suspended' then
+        windower.add_to_chat(207, "??? #1")
         check_weapon = coroutine.schedule(update_weapon, 10)
     end
 end
@@ -227,22 +253,28 @@ function update_opener()
     end
     local main_weapon = windower.ffxi.get_items(info.main_bag, info.main_weapon).id
     if main_weapon ~= 0 then
-        if info.last_weapon ~= main_weapon and settings.autows.opener ~= '' then
+        if info.last_weapon ~= main_weapon and autows.opener ~= '' then
             info.last_weapon = main_weapon
             local weaponskills = windower.ffxi.get_abilities().weapon_skills
             
             for x=1,#weaponskills,1 do
-                if res['weapon_skills'][weaponskills[x]].name == settings.autows.opener then
+                if res['weapon_skills'][weaponskills[x]].name == autows.opener then
                     info.openerValid = true
-                    print_autows_status()
+                    if autows.enabled then
+                        schedule_autows_status()
+                    end
                     return
                 end
             end
             info.openerValid = false
-            print_autows_status()
+            if autows.enabled then
+                schedule_autows_status()
+            end
         end
+        return
     end
     if not check_opener or coroutine.status(check_opener) ~= 'suspended' then
+        windower.add_to_chat(207, "??? #2")
         check_opener = coroutine.schedule(update_opener, 10)
     end
 end
@@ -321,19 +353,19 @@ end
 function find_weaponskill(tempTable, reson)
     local last_lp, lastk, last_prop
 
-    for x=2,#settings.autows.levelPriority,1 do
-        local lp = tonumber(settings.autows.levelPriority[x])
+    for x=2,#autows.levelPriority,1 do
+        local lp = tonumber(autows.levelPriority[x])
            for k=#tempTable[lp],1,-1 do
             local name = tempTable[lp][k].name
-            if not tableContains(settings.autows.blacklist, name) then
-                if lp ~= 3 or settings.autows.chainPriority == '' or tempTable[lp][k].prop == settings.autows.chainPriority then
-                    if lp ~= 3 or settings.autows.wsPriority == '' or name == settings.autows.wsPriority then
+            if not tableContains(autows.blacklist, name) then
+                if lp ~= 3 or autows.chainPriority == '' or tempTable[lp][k].prop == autows.chainPriority then
+                    if lp ~= 3 or autows.wsPriority == '' or name == autows.wsPriority then
                         autowsNextWS = name
                         return tempTable
                     end
                 end
 
-                if (last_prop == nil) or (lp == 3 and settings.autows.chainPriority ~= '' and last_prop ~= settings.autows.chainPriority and tempTable[lp][k].prop == settings.autows.chainPriority) then
+                if (last_prop == nil) or (lp == 3 and autows.chainPriority ~= '' and last_prop ~= autows.chainPriority and tempTable[lp][k].prop == autows.chainPriority) then
                     last_lp = lp
                     last_k = k
                     last_prop = tempTable[lp][k].prop
@@ -366,7 +398,7 @@ function check_results(reson)
     end
     if settings.Show.weapon[info.job] then
         tempTable = get_skills(windower.ffxi.get_abilities().weapon_skills, reson.active, 'weapon_skills', info.aeonic and aeonic_am(reson.step))
-        if settings.autows.enabled and settings.autows.close then
+        if autows.enabled and autows.close then
             tempTable = find_weaponskill(tempTable, reson)
         end
         resultTable = tableCombine(resultTable, tempTable)
@@ -431,16 +463,16 @@ windower.register_event('prerender', function()
                     reson.waiting = true
                     reson.timer = '\\cs(255,0,0)Wait  %.1f\\cr':format(delay - now)
                 else
-                    if settings.autows.enabled and settings.autows.close and timer > 1 and now - 1 > delay and reson.waiting then
-                        if (now - autowsLastCheck) >= settings.autows.closeDelay then
+                    if autows.enabled and autows.close and timer > 1 and now - 1 > delay and reson.waiting then
+                        if (now - autowsLastCheck) >= autows.closeDelay then
                             local player = windower.ffxi.get_player()
                             if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
-                                if player.vitals.tp > settings.autows.closeTp then
-                                    if settings.autows.hpGt < targ.hpp and targ.hpp < settings.autows.hpLt then
+                                if player.vitals.tp > autows.closeTp then
+                                    if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
                                         --reson.waiting = false
                                         if (autowsNextWS ~= nil) and (autowsNextWS ~= '') then
                                             windower.send_command(('input /ws "%s" <t>'):format(autowsNextWS))
-                                            --autowsNextWS = ''
+                                            autowsLastCheck = now
                                         end
                                     end
                                 end
@@ -450,14 +482,15 @@ windower.register_event('prerender', function()
                     reson.timer = '\\cs(0,255,0)Go!   %.1f\\cr':format(timer)
                 end
             else
-                if settings.autows.enabled and settings.autows.open and not settings.autows.waitForMB then
-                    if (now - autowsLastCheck) >= settings.autows.openDelay then
+                if autows.enabled and autows.open and not autows.waitForMB then
+                    if (now - autowsLastCheck) >= autows.openDelay then
                         local player = windower.ffxi.get_player()
                         if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
-                            if player.vitals.tp > settings.autows.openTp then
-                                if settings.autows.hpGt < targ.hpp and targ.hpp < settings.autows.hpLt then
-                                    if info.openerValid and settings.autows.opener ~= '' then
-                                        windower.send_command(('input /ws "%s" <t>'):format(settings.autows.opener))
+                            if player.vitals.tp > autows.openTp then
+                                if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
+                                    if info.openerValid and autows.opener ~= '' then
+                                        windower.send_command(('input /ws "%s" <t>'):format(autows.opener))
+                                        autowsLastCheck = now
                                     end
                                 end
                             end
@@ -478,14 +511,15 @@ windower.register_event('prerender', function()
             skill_props:update(reson)
             skill_props:show()
         else
-            if settings.autows.enabled and settings.autows.open then
-                if (now - autowsLastCheck) >= settings.autows.openDelay then
+            if autows.enabled and autows.open then
+                if (now - autowsLastCheck) >= autows.openDelay then
                     local player = windower.ffxi.get_player()
                     if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
-                        if player.vitals.tp > settings.autows.openTp then
-                            if settings.autows.hpGt < targ.hpp and targ.hpp < settings.autows.hpLt then
-                                if info.openerValid and settings.autows.opener ~= '' then
-                                    windower.send_command(('input /ws "%s" <t>'):format(settings.autows.opener))
+                        if player.vitals.tp > autows.openTp then
+                            if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
+                                if info.openerValid and autows.opener ~= '' then
+                                    windower.send_command(('input /ws "%s" <t>'):format(autows.opener))
+                                    autowsLastCheck = now
                                 end
                             end
                         end
@@ -636,7 +670,7 @@ windower.register_event('addon command', function(cmd, ...)
             settings.Show[cmd]:remove(info.job)
         end
         config.save(settings)
-        config.reload(settings)
+        config.reload(settings) -- why?
         windower.add_to_chat(207, '%s: %s info will no%s be displayed on %s.':format(_addon.name, cmd, key and ' longer' or 'w', info.job))--'t' or 'w'
     elseif type(default[cmd]) == 'boolean' then
         settings[cmd] = not settings[cmd]
@@ -644,9 +678,9 @@ windower.register_event('addon command', function(cmd, ...)
     elseif cmd == 'autows' then
         if ... then
             if ...:lower() == 'on' then
-                settings.autows.enabled = true
+                autows.enabled = true
             elseif ...:lower() == 'off' then
-                settings.autows.enabled = false
+                autows.enabled = false
             end
         end
         
@@ -662,10 +696,14 @@ windower.register_event('job change', function(job, lvl)
     job = res.jobs:with('id', job).english_short
     if job ~= info.job then
         info.job = job
-        config.reload(settings)
-        settings.autows.enabled = false
         autowsNextWS = ''
-        print_autows_status()
+        local wasEnabled = autows.enabled
+        config.reload(settings)
+        load_autows()
+        
+        if autows.enabled or wasEnabled then
+            schedule_autows_status()
+        end
     end
 end)
 
@@ -689,12 +727,12 @@ windower.register_event('load', function()
 end)
 
 windower.register_event('unload', function()
-    coroutine.closer(check_opener)
+    coroutine.close(check_opener)
     coroutine.close(check_weapon)
 end)
 
 windower.register_event('logout', function()
-    coroutine.closer(check_opener)
+    coroutine.close(check_opener)
     check_opener = nil
     coroutine.close(check_weapon)
     check_weapon = nil
