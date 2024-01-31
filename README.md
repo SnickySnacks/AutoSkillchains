@@ -1,7 +1,7 @@
 # AutoSkillChains
 ### AutoWS + Active Battle Skillchain Display.
 
-AutoWS is always disabled when first loaded.
+AutoWS doesn't have a lot of commands for setting the config yet, sorry
 
     //asc autows -- display autows information
 
@@ -9,33 +9,35 @@ AutoWS is always disabled when first loaded.
 
 AutoWS settings.  Most settings are currently only available in settings.xml
 
-    enabled       -- autows is enabled
+    enabled         -- autows is enabled
     
-    open          -- open skillchains
+    open            -- open skillchains
     
-    openTp        -- minimum tp to weaponskill when opening
+    openTp          -- minimum tp to weaponskill when opening
     
-    openDelay     -- delay between weaponskill attempts, to avoid spamming
+    openDelay       -- delay between weaponskill attempts, to avoid spamming
     
-    opener        -- weaponskill to use when opening
+    opener          -- weaponskill to use when opening
     
-    waitForMB     -- whether to wait for the magic burst window to close before opening a new skillchain
+    waitForMB       -- whether to wait for the magic burst window to close before opening a new skillchain
     
-    close         -- close skillchains
+    close           -- close skillchains
     
-    closeTp       -- minimum tp to weaponskill when closing
+    closeTp         -- minimum tp to weaponskill when closing
 
-    closeDelay    -- delay between weaponskill attempts, to avoid spamming
+    closeDelay      -- delay between weaponskill attempts, to avoid spamming
     
-    levelPriority -- the priority of what skillchain level to make, remove a level to avoid it entirely
+    levelPriority   -- the priority of what skillchain level to make, remove a level to avoid it entirely
     
-    chainPriority -- prioritize Light or Darkness when making a level 3 skillchain
+    chainPriority   -- prioritize Light or Darkness when making a level 3 skillchain
+
+    closeWsPriority -- after checking chainPriority, which weaponskill should be used
     
-    blacklist     -- all the aoe weaponskills you probably don't want to use
+    blacklist       -- all the aoe weaponskills you probably don't want to use
     
-    hpGt          -- percentage of hps the mob must be above when considering to weaponskill, helps avoid overkill
+    hpGt            -- percentage of hps the mob must be above when considering to weaponskill, helps avoid overkill
     
-    hpLt          -- percentage of hps the mob must be below when considering to weaponskill, helps avoid (too far)
+    hpLt            -- percentage of hps the mob must be below when considering to weaponskill, helps avoid (too far)
 
 Displays a text object containing skillchain elements resonating on current target, timer for skillchain window,
 along with a list of weapon skills that can skillchain based on the weapon you have currently equipped. 
