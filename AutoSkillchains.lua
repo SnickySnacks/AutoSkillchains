@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.24.01.30'
+_addon.version = '1.24.01.31'
 
 require('luau')
 require('pack')
@@ -41,6 +41,7 @@ file = require('files')
 _static = S{'WAR','MNK','WHM','BLM','RDM','THF','PLD','DRK','BST','BRD','RNG','SAM','NIN','DRG','SMN','BLU','COR','PUP','DNC','SCH','GEO','RUN'}
 
 default = {}
+default.debugLogs = false
 default.Show = {burst=_static, pet=S{'BST','SMN'}, props=_static, spell=S{'SCH','BLU'}, step=_static, timer=_static, weapon=_static}
 default.UpdateFrequency = 0.2
 default.aeonic = false
@@ -50,12 +51,14 @@ default_autows = {}
 default_autows.enabled = false
 default_autows.open = true
 default_autows.openTp = 999
-default_autows.openDelay = 0.5
+default_autows.openWsDelay = 0.5
 default_autows.opener = ''
 default_autows.waitForMB = true
 default_autows.close = true
 default_autows.closeTp = 999
-default_autows.closeDelay = 0.5
+default_autows.closeWsDelay = 0.5
+default_autows.closeWindowDelay = 1
+default_autows.closeWindowMinimum = 1
 default_autows.levelPriority = L{'dummy',3,4,2,1} -- 'dummy' required to keep the list from breaking if there is only 1 number
 default_autows.chainPriority = ''
 default_autows.closeWsPriority = ''
@@ -156,6 +159,9 @@ initialize = function(text, settings)
         load_autows()
 
         if autows.enabled then
+            if settings.debugLogs then
+                windower.add_to_chat(207, "initialize")
+            end
             schedule_autows_status()
         end
     end
@@ -183,12 +189,19 @@ function schedule_autows_status()
 end
 
 function load_autows()
-    if file.exists('data\\autows-'..info.job..'.xml') then
+    local name = windower.ffxi.get_player().name
+    local path = 'data\\'
+    if windower.dir_exists(windower.addon_path..'data\\'..name) then
+        path = path..name..'\\'
+    end
+    if file.exists(path..'autows-'..info.job..'.xml') then
         default_filt = false
-        autows = config.load('data\\autows-'..info.job..'.xml', default_autows, false)
+        autows = config.load(path..'autows-'..info.job..'.xml', default_autows)
+        config.save(autows)
     elseif not default_filt then
         default_filt = true
-        autows = config.load('data\\autows-default.xml', default_autows, false)
+        autows = config.load(path..'autows-default.xml', default_autows)
+        config.save(autows)
     end
 end
 
@@ -260,6 +273,9 @@ function update_opener()
                 if res['weapon_skills'][weaponskills[x]].name == autows.opener then
                     info.openerValid = true
                     if autows.enabled then
+                        if settings.debugLogs then
+                            windower.add_to_chat(207, "update opener (valid)")
+                        end
                         schedule_autows_status()
                     end
                     return
@@ -267,6 +283,9 @@ function update_opener()
             end
             info.openerValid = false
             if autows.enabled then
+                if settings.debugLogs then
+                    windower.add_to_chat(207, "update opener (invalid)")
+                end
                 schedule_autows_status()
             end
         end
@@ -461,8 +480,8 @@ windower.register_event('prerender', function()
                     reson.waiting = true
                     reson.timer = '\\cs(255,0,0)Wait  %.1f\\cr':format(delay - now)
                 else
-                    if autows.enabled and autows.close and timer > 1 and now - 1 > delay and reson.waiting then
-                        if (now - autowsLastCheck) >= autows.closeDelay then
+                    if autows.enabled and autows.close and timer > autows.closeWindowMinimum and now - autows.closeWindowDelay > delay and reson.waiting then
+                        if (now - autowsLastCheck) >= autows.closeWsDelay then
                             local player = windower.ffxi.get_player()
                             if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
                                 if player.vitals.tp > autows.closeTp then
@@ -480,7 +499,7 @@ windower.register_event('prerender', function()
                 end
             else
                 if autows.enabled and autows.open and not autows.waitForMB then
-                    if (now - autowsLastCheck) >= autows.openDelay then
+                    if (now - autowsLastCheck) >= autows.openWsDelay then
                         local player = windower.ffxi.get_player()
                         if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
                             if player.vitals.tp > autows.openTp then
@@ -509,7 +528,7 @@ windower.register_event('prerender', function()
             skill_props:show()
         else
             if autows.enabled and autows.open then
-                if (now - autowsLastCheck) >= autows.openDelay then
+                if (now - autowsLastCheck) >= autows.openWsDelay then
                     local player = windower.ffxi.get_player()
                     if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
                         if player.vitals.tp > autows.openTp then
@@ -638,6 +657,9 @@ windower.register_event('incoming chunk', function(id, data)
         end
         buffs[info.player] = set_buff
     elseif id == 0xAC then
+        if settings.debugLogs then
+            windower.add_to_chat(207, "ability change")
+        end
         update_opener()
     end
 end)
@@ -680,7 +702,9 @@ windower.register_event('addon command', function(cmd, ...)
                 autows.enabled = false
             end
         end
-        
+        if settings.debugLogs then
+            windower.add_to_chat(207, "command")
+        end
         print_autows_status()
     elseif cmd == 'eval' then
         assert(loadstring(table.concat({...}, ' ')))()
@@ -699,6 +723,9 @@ windower.register_event('job change', function(job, lvl)
         load_autows()
         
         if autows.enabled or wasEnabled then
+            if settings.debugLogs then
+                windower.add_to_chat(207, "job change")
+            end
             schedule_autows_status()
         end
     end
