@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.24.01.31'
+_addon.version = '1.24.02.02'
 
 require('luau')
 require('pack')
@@ -265,10 +265,9 @@ function update_opener()
     end
     local main_weapon = windower.ffxi.get_items(info.main_bag, info.main_weapon).id
     if main_weapon ~= 0 then
-        if info.last_weapon ~= main_weapon and autows.opener ~= '' then
-            info.last_weapon = main_weapon
+        if autows.opener ~= '' then
             local weaponskills = windower.ffxi.get_abilities().weapon_skills
-            
+            local wasValid = info.openerValid
             for x=1,#weaponskills,1 do
                 if res['weapon_skills'][weaponskills[x]].name == autows.opener then
                     info.openerValid = true
@@ -276,7 +275,9 @@ function update_opener()
                         if settings.debugLogs then
                             windower.add_to_chat(207, "update opener (valid)")
                         end
-                        schedule_autows_status()
+                        if wasValid ~= info.openerValid then
+                            schedule_autows_status()
+                        end
                     end
                     return
                 end
@@ -286,7 +287,9 @@ function update_opener()
                 if settings.debugLogs then
                     windower.add_to_chat(207, "update opener (invalid)")
                 end
-                schedule_autows_status()
+                if wasValid ~= info.openerValid then
+                    schedule_autows_status()
+                end
             end
         end
         return
