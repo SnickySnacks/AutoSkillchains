@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.24.02.02'
+_addon.version = '1.24.02.03'
 
 require('luau')
 require('pack')
@@ -724,6 +724,7 @@ windower.register_event('job change', function(job, lvl)
         local wasEnabled = autows.enabled
         config.reload(settings)
         load_autows()
+        update_opener()
         
         if autows.enabled or wasEnabled then
             if settings.debugLogs then
