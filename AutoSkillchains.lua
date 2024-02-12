@@ -379,7 +379,7 @@ function find_weaponskill(tempTable, reson)
             local name = tempTable[lp][k].name
             if not tableContains(autows.blacklist, name) then
                 if lp ~= 3 or autows.chainPriority == '' or tempTable[lp][k].prop == autows.chainPriority then
-                    if lp ~= 3 or autows.wsPriority == '' or name == autows.wsPriority then
+                    if lp ~= 3 or autows.closeWsPriority == '' or name == autows.closeWsPriority then
                         autowsNextWS = name
                         return tempTable
                     end
