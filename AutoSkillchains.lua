@@ -191,6 +191,7 @@ end
 function load_autows()
     local name = windower.ffxi.get_player().name
     local path = 'data\\'
+    autowsNextWS = ''
     if windower.dir_exists(windower.addon_path..'data\\'..name) then
         path = path..name..'\\'
     end
