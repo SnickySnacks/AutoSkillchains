@@ -708,9 +708,13 @@ windower.register_event('addon command', function(cmd, ...)
         windower.add_to_chat(207, '%s: %s %s':format(_addon.name, cmd, settings[cmd] and 'on' or 'off'))
     elseif cmd == 'autows' then
         if ... then
-            if ...:lower() == 'on' then
+            local subcmd = ...:lower();
+            if subcmd == 'reload' then
+                windower.add_to_chat(207, 'Reloading AutoWS config!');
+                load_autows()
+            elseif subcmd == 'on' then
                 autows.enabled = true
-            elseif ...:lower() == 'off' then
+            elseif subcmd == 'off' then
                 autows.enabled = false
             end
         end
