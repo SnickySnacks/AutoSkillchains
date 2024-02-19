@@ -3,9 +3,11 @@
 
 AutoWS doesn't have a lot of commands for setting the config yet, sorry
 
-    //asc autows -- display autows information
+    //asc autows        -- display autows information
 
     //asc autows on/off -- turns autows on or off
+
+    //asc autows reload -- reloads your autows config
 
 AutoWS settings.  Most settings are currently only available in autows-default.xml.
 Create an autows-job.xml for job specific config, i.e. autows-PUP.xml
