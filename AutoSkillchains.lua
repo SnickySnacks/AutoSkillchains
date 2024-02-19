@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.24.02.12'
+_addon.version = '1.24.02.19'
 
 require('luau')
 require('pack')
@@ -490,6 +490,9 @@ windower.register_event('prerender', function()
                                 if player.vitals.tp > autows.closeTp then
                                     if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
                                         if (autowsNextWS ~= nil) and (autowsNextWS ~= '') then
+                                            if settings.debugLogs then
+                                                windower.add_to_chat(207, '%s':format(autowsNextWS))
+                                            end
                                             windower.send_command(('input /ws "%s" <t>'):format(autowsNextWS))
                                             autowsLastCheck = now
                                         end
@@ -508,6 +511,9 @@ windower.register_event('prerender', function()
                             if player.vitals.tp > autows.openTp then
                                 if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
                                     if info.openerValid and autows.opener ~= '' then
+                                        if settings.debugLogs then
+                                            windower.add_to_chat(207, '%s':format(autows.opener))
+                                        end
                                         windower.send_command(('input /ws "%s" <t>'):format(autows.opener))
                                         autowsLastCheck = now
                                     end
@@ -537,6 +543,9 @@ windower.register_event('prerender', function()
                         if player.vitals.tp > autows.openTp then
                             if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
                                 if info.openerValid and autows.opener ~= '' then
+                                    if settings.debugLogs then
+                                        windower.add_to_chat(207, '%s':format(autows.opener))
+                                    end
                                     windower.send_command(('input /ws "%s" <t>'):format(autows.opener))
                                     autowsLastCheck = now
                                 end
