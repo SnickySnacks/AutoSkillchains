@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.24.02.19'
+_addon.version = '1.24.02.28'
 
 require('luau')
 require('pack')
@@ -717,6 +717,7 @@ windower.register_event('addon command', function(cmd, ...)
                 autows.enabled = true
             elseif subcmd == 'off' then
                 autows.enabled = false
+                autowsNextWS = ''
             end
         end
         if settings.debugLogs then
