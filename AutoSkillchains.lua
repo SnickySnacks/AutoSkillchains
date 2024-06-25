@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.24.02.28'
+_addon.version = '1.24.06.25'
 
 require('luau')
 require('pack')
@@ -713,6 +713,7 @@ windower.register_event('addon command', function(cmd, ...)
             if subcmd == 'reload' then
                 windower.add_to_chat(207, 'Reloading AutoWS config!');
                 load_autows()
+                update_opener()
             elseif subcmd == 'on' then
                 autows.enabled = true
             elseif subcmd == 'off' then
