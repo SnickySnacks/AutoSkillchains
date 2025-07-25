@@ -43,7 +43,7 @@ skills.weapon_skills = {
     [12] = {en='Stringing Pummel',skillchain={'Gravitation','Liquefaction'}},
     [13] = {en='Tornado Kick',skillchain={'Induration','Detonation','Impaction'}},
     [14] = {en='Victory Smite',skillchain={'Light','Fragmentation'}},
-    [15] = {en='Shijin Spiral',skillchain={'Fusion','Reverberation'},aeonic='Light',weapon='Godhand'},
+    [15] = {en='Shijin Spiral',skillchain={'Fusion','Reverberation'},aeonic='Light',weapon='Godhands'},
     [16] = {en='Wasp Sting',skillchain={'Scission'}},
     [17] = {en='Viper Bite',skillchain={'Scission'}},
     [18] = {en='Shadowstitch',skillchain={'Reverberation'}},
