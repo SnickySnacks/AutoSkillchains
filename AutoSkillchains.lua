@@ -311,7 +311,7 @@ end
 
 function aeonic_prop(ability, actor)
     if ability.aeonic and (ability.weapon == info.aeonic and actor == info.player or settings.aeonic and info.player ~= actor) then
-        return {ability.skillchain[1], ability.skillchain[2], ability.aeonic}
+        return {ability.aeonic, ability.skillchain[1], ability.skillchain[2]}
     end
     return ability.skillchain
 end
