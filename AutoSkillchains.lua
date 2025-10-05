@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.24.06.25'
+_addon.version = '1.25.10.05'
 
 require('luau')
 require('pack')
@@ -53,6 +53,7 @@ default_autows.open = true
 default_autows.openTp = 999
 default_autows.openWsDelay = 0.5
 default_autows.opener = ''
+default_autows.waitForSC = true
 default_autows.waitForMB = true
 default_autows.close = true
 default_autows.closeTp = 999
@@ -75,6 +76,7 @@ buff_dur = {[163]=40,[164]=30,[470]=60}
 info = {}
 resonating = {}
 buffs = {}
+local autowsNextCmd = ''
 local autowsNextWS = ''
 
 colors = {}            -- Color codes by Sammeh
@@ -191,6 +193,7 @@ end
 function load_autows()
     local name = windower.ffxi.get_player().name
     local path = 'data\\'
+    autowsNextCmd = ''
     autowsNextWS = ''
     if windower.dir_exists(windower.addon_path..'data\\'..name) then
         path = path..name..'\\'
@@ -220,7 +223,7 @@ function print_autows_status()
         end
     end
 
-    windower.add_to_chat(207, '[AutoWS%s: %s] Open: %s, Close: %s, MB: %s @ %d < HP%% < %s':format(not default_filt and '('..string.upper(info.job)..')' or '', autows.enabled and 'ON' or 'OFF', openerText, autows.close and 'ON' or 'OFF', autows.waitForMB and 'ON' or 'OFF', autows.hpGt, autows.hpLt))
+    windower.add_to_chat(207, '[AutoWS%s: %s] Open: %s, Close: %s, SC: %s, MB: %s @ %d < HP%% < %s':format(not default_filt and '('..string.upper(info.job)..')' or '', autows.enabled and 'ON' or 'OFF', openerText, autows.close and 'ON' or 'OFF', autows.waitForSC and 'ON' or 'OFF', autows.waitForMB and 'ON' or 'OFF', autows.hpGt, autows.hpLt))
     if autows.close then
         local levelPriority = ''
         local chainPriority = ''
@@ -261,9 +264,6 @@ function update_weapon()
 end
 
 function update_opener()
-    if not settings.Show.weapon[info.job] then
-        return
-    end
     local main_weapon = windower.ffxi.get_items(info.main_bag, info.main_weapon).id
     if main_weapon ~= 0 then
         if autows.opener ~= '' then
@@ -371,7 +371,7 @@ function tableCombine(dst, src)
     return dst
 end
 
-function find_weaponskill(tempTable, reson)
+function find_weaponskill(tempTable, reson, command)
     local last_lp, lastk, last_prop
 
     for x=2,#autows.levelPriority,1 do
@@ -381,6 +381,7 @@ function find_weaponskill(tempTable, reson)
             if not tableContains(autows.blacklist, name) then
                 if lp ~= 3 or autows.chainPriority == '' or tempTable[lp][k].prop == autows.chainPriority then
                     if lp ~= 3 or autows.closeWsPriority == '' or name == autows.closeWsPriority then
+                        autowsNextCmd = command
                         autowsNextWS = name
                         return tempTable
                     end
@@ -394,19 +395,23 @@ function find_weaponskill(tempTable, reson)
             end
         end
         if (last_lp ~= nil) and (last_k ~= nil) then
+            autowsNextCmd = command
             autowsNextWS = tempTable[last_lp][last_k].name
             return tempTable
         end
     end
 
+    autowsNextCmd = ''
     autowsNextWS = ''
+
     return tempTable
 end
 
 function check_results(reson)
-    local tempTable = {{},{},{},{}}
+    local wsTable = {{},{},{},{}}
     local resultTable = {{},{},{},{}}
     local outputTable = {}
+    autowsNextWS = ''
     if settings.Show.spell[info.job] and info.job == 'SCH' then
         tempTable = get_skills({0,1,2,3,4,5,6,7}, reson.active, 'elements')
         resultTable = tableCombine(resultTable, tempTable)
@@ -415,12 +420,15 @@ function check_results(reson)
         resultTable = tableCombine(resultTable, tempTable)
     elseif settings.Show.pet[info.job] and windower.ffxi.get_mob_by_target('pet') then
         tempTable = get_skills(windower.ffxi.get_abilities().job_abilities, reson.active, 'job_abilities')
+	if autows.enabled and autows.close then
+            find_weaponskill(tempTable, reson, 'ja')
+        end
         resultTable = tableCombine(resultTable, tempTable)
     end
     if settings.Show.weapon[info.job] then
         tempTable = get_skills(windower.ffxi.get_abilities().weapon_skills, reson.active, 'weapon_skills', info.aeonic and aeonic_am(reson.step))
-        if autows.enabled and autows.close then
-            tempTable = find_weaponskill(tempTable, reson)
+        if autows.enabled and autows.close and autowsNextWS == '' then
+            find_weaponskill(tempTable, reson, 'ws')
         end
         resultTable = tableCombine(resultTable, tempTable)
     end
@@ -477,24 +485,25 @@ windower.register_event('prerender', function()
 
     if targ and targ.hpp > 0 then
         if timer > 0 then
+            local tryOpen = true
             if not reson.closed then
                 reson.disp_info = reson.disp_info or check_results(reson)
-                local delay = reson.delay
-                if now < delay then
+                tryOpen = (autows.waitForSC == false) and ((autowsNextWS == nil) or (autowsNextWS == ''))
+                if now < reson.delay then
                     reson.waiting = true
-                    reson.timer = '\\cs(255,0,0)Wait  %.1f\\cr':format(delay - now)
+                    reson.timer = '\\cs(255,0,0)Wait  %.1f\\cr':format(reson.delay - now)
                 else
-                    if autows.enabled and autows.close and timer > autows.closeWindowMinimum and now - autows.closeWindowDelay > delay and reson.waiting then
+                    if autows.enabled and autows.close and timer > autows.closeWindowMinimum and now - autows.closeWindowDelay > reson.delay and reson.waiting then
                         if (now - autowsLastCheck) >= autows.closeWsDelay then
-                            local player = windower.ffxi.get_player()
-                            if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
-                                if player.vitals.tp > autows.closeTp then
-                                    if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
-                                        if (autowsNextWS ~= nil) and (autowsNextWS ~= '') then
+                            if (autowsNextWS ~= nil) and (autowsNextWS ~= '') then
+                                local player = windower.ffxi.get_player()
+                                if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
+                                    if player.vitals.tp > autows.closeTp then
+                                        if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
                                             if settings.debugLogs then
                                                 windower.add_to_chat(207, '%s':format(autowsNextWS))
                                             end
-                                            windower.send_command(('input /ws "%s" <t>'):format(autowsNextWS))
+                                            windower.send_command(('input /%s "%s" <t>'):format(autowsNextCmd, autowsNextWS))
                                             autowsLastCheck = now
                                         end
                                     end
@@ -505,6 +514,15 @@ windower.register_event('prerender', function()
                     reson.timer = '\\cs(0,255,0)Go!   %.1f\\cr':format(timer)
                 end
             else
+                if settings.Show.burst[info.job] then
+                    reson.disp_info = ''
+                    reson.timer = 'Burst %d':format(timer)
+                else
+                    resonating[targ_id] = nil
+                    return
+                end
+            end
+            if tryOpen then
                 if autows.enabled and autows.open and not autows.waitForMB then
                     if (now - autowsLastCheck) >= autows.openWsDelay then
                         local player = windower.ffxi.get_player()
@@ -522,13 +540,6 @@ windower.register_event('prerender', function()
                             end
                         end
                     end
-                end
-                if settings.Show.burst[info.job] then
-                    reson.disp_info = ''
-                    reson.timer = 'Burst %d':format(timer)
-                else
-                    resonating[targ_id] = nil
-                    return
                 end
             end
             reson.name = res[reson.res][reson.id].name
@@ -736,6 +747,7 @@ windower.register_event('job change', function(job, lvl)
     job = res.jobs:with('id', job).english_short
     if job ~= info.job then
         info.job = job
+        autowsNextCmd = ''
         autowsNextWS = ''
         local wasEnabled = autows.enabled
         config.reload(settings)
