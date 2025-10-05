@@ -24,6 +24,8 @@ Make a subdirectory with your character name for character specific configs, i.e
     opener             -- weaponskill to use when opening
     
     waitForMB          -- whether to wait for the magic burst window to close before opening a new skillchain
+
+    waitForSC          -- whether to wait for the skillchain window if not able to continue the current skillchain
     
     close              -- close skillchains
     
@@ -64,7 +66,7 @@ The following commands toggle the display information and are saved on a per job
 
     //asc pet      -- smn and bst pet skills.
 
-    //asc weapon   -- weapon skills.
+    //asc weapon   -- weapon skills. For jobs like SMN, I recommend turning weapon off so Blood Pacts are prioritized.
 
     //asc burst    -- magic burst elements.
 
