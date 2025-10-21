@@ -22,7 +22,9 @@ Make a subdirectory with your character name for character specific configs, i.e
     openWsDelay        -- delay between weaponskill attempts, to avoid spamming
     
     opener             -- weaponskill to use when opening
-    
+
+    waitForSC          -- whether to wait for the skillchain window to end before opening a new skillchain, if the current skillchain cannot be continued
+
     waitForMB          -- whether to wait for the magic burst window to close before opening a new skillchain
     
     close              -- close skillchains
