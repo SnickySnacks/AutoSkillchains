@@ -9,8 +9,12 @@ AutoWS doesn't have a lot of commands for setting the config yet, sorry
 
     //asc autows reload -- reloads your autows config
 
-AutoWS settings.  Most settings are currently only available in autows-default.xml.
-Create an autows-job.xml for job specific config, i.e. autows-PUP.xml
+AutoWS settings:
+
+Most settings are currently only available by manually editing autows-default.xml.  
+Create an autows-job.xml for job specific config, i.e. autows-PUP.xml  
+Create an autows-weapontype.xml for weapon type specific config, i.e. autows-GreatSword.xml  
+Combine both of the above for flexibility, i.e. autows-WAR-Sword.xml, autows-WAR-Polearm.xml  
 Make a subdirectory with your character name for character specific configs, i.e. data\Snicky\autows-PUP.xml
 
     enabled            -- autows is enabled
