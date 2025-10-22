@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.25.10.21'
+_addon.version = '1.25.10.22'
 
 require('luau')
 require('pack')
@@ -196,11 +196,6 @@ function try_load_config(path)
 end
 
 function load_autows(on_change_only)
-    local name = windower.ffxi.get_player().name
-    local path = 'data\\'
-    autowsNextCmd = ''
-    autowsNextWS = ''
-
     if info.main_weapon == nil or info.main_weapon == 0 then 
       current_weapon = "Hand-to-Hand"
     else 
@@ -211,6 +206,12 @@ function load_autows(on_change_only)
     if on_change_only and (current_weapon == last_weapon) then
         return
     end
+
+    local name = windower.ffxi.get_player().name
+    local path = 'data\\'
+
+    autowsNextCmd = ''
+    autowsNextWS = ''
 
     last_weapon = current_weapon
 
@@ -435,7 +436,7 @@ function find_weaponskill(tempTable, reson, command)
 end
 
 function check_results(reson)
-    local wsTable = {{},{},{},{}}
+    local tempTable = {{},{},{},{}}
     local resultTable = {{},{},{},{}}
     local outputTable = {}
     autowsNextWS = ''
