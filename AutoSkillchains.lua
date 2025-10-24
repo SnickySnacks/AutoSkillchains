@@ -1,5 +1,5 @@
 --[[
-Copyright © 2023, SnickySnacks
+Copyright © 2025, SnickySnacks
 Based on Skillchains by Ivaar and AutoWS by Lorand
 All rights reserved.
 
@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.25.10.22'
+_addon.version = '1.25.10.24'
 
 require('luau')
 require('pack')
@@ -77,6 +77,7 @@ info = {}
 resonating = {}
 buffs = {}
 local last_weapon = nil
+local last_weapon_type = ''
 local autowsNextCmd = ''
 local autowsNextWS = ''
 
@@ -196,14 +197,50 @@ function try_load_config(path)
 end
 
 function load_autows(on_change_only)
-    if info.main_weapon == nil or info.main_weapon == 0 then 
-      current_weapon = "Hand-to-Hand"
-    else 
-      current_weapon = res.skills[res.items[windower.ffxi.get_items(info.main_bag, info.main_weapon).id].skill].en
+    if info == nil then
+        if settings.debugLogs then
+            windower.add_to_chat(207, 'info was nil')
+        end
+        return
     end
 
---    windower.add_to_chat(1, (on_change_only and 'true' or 'false') .. ', ' .. current_weapon .. ', ' .. (info.main_weapon or 'nil'))
-    if on_change_only and (current_weapon == last_weapon) then
+    if on_change_only and (info.main_weapon == last_weapon) then
+        if settings.debugLogs then
+            windower.add_to_chat(207, 'on_change_only and info.main_weapon == last_weapon')
+        end
+        return
+    end
+    
+    local current_weapon_type = ''
+    
+    if info.main_weapon == nil or info.main_weapon == 0 then 
+        current_weapon_type = "Hand-to-Hand"
+    else
+        if info.main_bag ~= nil then
+            if res.items ~= nil then
+                local item = windower.ffxi.get_items(info.main_bag, info.main_weapon)
+                if item ~= nil then
+                    local res_item = res.items[item.id]
+                    if res_item ~= nil then
+                        current_weapon_type = res.skills[res_item.skill].en
+                    elseif settings.debugLogs then
+                        windower.add_to_chat(207, 'res.items[item.id] was nil');
+                    end
+                elseif settings.debugLogs then
+                    windower.add_to_chat(207, 'windower.ffxi.get_items(info.main_bag, info.main_weapon) was nil');
+                end
+            else
+                windower.add_to_chat(207, 'res.items was nil');
+            end
+        else
+            windower.add_to_chat(207, 'info.main_bag was nil');
+        end
+    end
+
+    if settings.debugLogs then
+        windower.add_to_chat(207, 'on_change_only: ' .. (on_change_only and 'true' or 'false') .. ', \'' .. last_weapon_type .. '\' -> \'' .. current_weapon_type .. '\', main_weapon: ' .. (info.main_weapon or 'nil'))
+    end
+    if on_change_only and (current_weapon_type == last_weapon_type) then
         return
     end
 
@@ -213,25 +250,37 @@ function load_autows(on_change_only)
     autowsNextCmd = ''
     autowsNextWS = ''
 
-    last_weapon = current_weapon
+    last_weapon = info.main_weapon
+    last_weapon_type = current_weapon_type
 
     if windower.dir_exists(windower.addon_path .. 'data\\' .. name) then
         path = path .. name .. '\\'
     end
 
-    current_weapon = current_weapon:gsub("%s+", "")
+    current_weapon_type = current_weapon_type:gsub("%s+", "")
 
-    if try_load_config(path .. 'autows-' .. info.job .. '-' .. current_weapon .. '.xml') then
+    if (current_weapon_type ~= '') and try_load_config(path .. 'autows-' .. info.job .. '-' .. current_weapon_type .. '.xml') then
+        info.config_file = string.upper(info.job) .. '-' .. current_weapon_type
+        if settings.debugLogs then
+            windower.add_to_chat(207, 'Loaded config for ' .. info.job .. ' + ' .. current_weapon_type)
+        end
     elseif try_load_config(path .. 'autows-' .. info.job .. '.xml') then
-    elseif try_load_config(path .. 'autows-' .. current_weapon .. '.xml') then
+        info.config_file = string.upper(info.job)
+        if settings.debugLogs then
+            windower.add_to_chat(207, 'Loaded config for ' .. info.job)
+        end
+    elseif try_load_config(path .. 'autows-' .. current_weapon_type .. '.xml') then
+        info.config_file = current_weapon_type
+        if settings.debugLogs then
+            windower.add_to_chat(207, 'Loaded config for ' .. current_weapon_type)
+        end
     elseif not default_filt then
         default_filt = true
         autows = config.load(path .. 'autows-default.xml', default_autows)
         config.save(autows)
-    end
-    
-    if on_change_only then
-        print_autows_status()
+        if settings.debugLogs then
+            windower.add_to_chat(207, 'Loaded default config')
+        end
     end
 end
 
@@ -249,7 +298,7 @@ function print_autows_status()
         end
     end
 
-    windower.add_to_chat(207, '[AutoWS%s: %s] Open: %s, Close: %s, SC: %s, MB: %s @ %d < HP%% < %s':format(not default_filt and '('..string.upper(info.job)..')' or '', autows.enabled and 'ON' or 'OFF', openerText, autows.close and 'ON' or 'OFF', autows.waitForSC and 'ON' or 'OFF', autows.waitForMB and 'ON' or 'OFF', autows.hpGt, autows.hpLt))
+    windower.add_to_chat(207, '[AutoWS%s: %s] Open: %s, Close: %s, SC: %s, MB: %s @ %d < HP%% < %s':format(not default_filt and '(' .. info.config_file .. ')' or '', autows.enabled and 'ON' or 'OFF', openerText, autows.close and 'ON' or 'OFF', autows.waitForSC and 'ON' or 'OFF', autows.waitForMB and 'ON' or 'OFF', autows.hpGt, autows.hpLt))
     if autows.close then
         local levelPriority = ''
         local chainPriority = ''
@@ -291,34 +340,38 @@ end
 
 function update_opener()
     local main_weapon = windower.ffxi.get_items(info.main_bag, info.main_weapon).id
+    local wasEnabled = autows and autows.enabled
+    local hadOpener = autows and autows.opener
     load_autows(true)
 
     if main_weapon ~= 0 then
-        if autows.opener ~= '' then
-            local weaponskills = windower.ffxi.get_abilities().weapon_skills
-            local wasValid = info.openerValid
-            for x=1,#weaponskills,1 do
-                if res['weapon_skills'][weaponskills[x]].name == autows.opener then
-                    info.openerValid = true
-                    if autows.enabled then
+        if autows ~= nil then
+            if autows.opener ~= '' then
+                local weaponskills = windower.ffxi.get_abilities().weapon_skills
+                local wasValid = info.openerValid
+                for x=1,#weaponskills,1 do
+                    if res['weapon_skills'][weaponskills[x]].name == autows.opener then
+                        info.openerValid = true
                         if settings.debugLogs then
                             windower.add_to_chat(207, "update opener (valid)")
                         end
-                        if wasValid ~= info.openerValid then
+                        if (wasEnabled ~= autows.enabled) or (wasValid ~= info.openerValid) or (hadOpener ~= autows.opener) then
                             schedule_autows_status()
                         end
+                        return
                     end
-                    return
                 end
-            end
-            info.openerValid = false
-            if autows.enabled then
+                info.openerValid = false
                 if settings.debugLogs then
                     windower.add_to_chat(207, "update opener (invalid)")
                 end
-                if wasValid ~= info.openerValid then
+                if (wasEnabled ~= autows.enabled) or (wasValid ~= info.openerValid) or (hadOpener ~= autows.opener) then
                     schedule_autows_status()
                 end
+                return
+            end
+            if (wasEnabled ~= autows.enabled) or (hadOpener ~= autows.opener) then
+                schedule_autows_status()
             end
         end
         return
@@ -807,18 +860,16 @@ windower.register_event('load', function()
         info.range_bag = equip.range_bag
         
         load_autows(false)
-
+        update_weapon()
+        update_opener()
+        buffs[info.player] = {}
+        autowsLastCheck = os.clock()
         if autows.enabled then
             if settings.debugLogs then
                 windower.add_to_chat(207, "initialize")
             end
             schedule_autows_status()
-        end
-
-        update_weapon()
-        update_opener()
-        buffs[info.player] = {}
-        autowsLastCheck = os.clock()
+        end        
     end
 end)
 
