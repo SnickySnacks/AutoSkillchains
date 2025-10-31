@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.25.10.30'
+_addon.version = '1.25.10.31'
 
 require('luau')
 require('pack')
@@ -381,17 +381,33 @@ function update_opener()
     end
 end
 
-function aeonic_am(step)
-    for x=270,272 do
-        if buffs[info.player][x] then
-            return 272-x < step
+function aeonic_am_level()
+    if info.aeonic then
+        for x=270,272 do
+            if buffs[info.player][x] then
+                local player = windower.ffxi.get_player()
+                -- There's no real way to determine if the player will hold TP to the next AM,
+                -- but we can assume that 1000 tp is the minimum
+                -- however, the AM increase logic only applies to the aeonic WS. how to deal...                
+                local tp = (player and math.floor(player.vitals.tp / 1000)) or 1
+                tp = (tp == 0) and 1 or tp
+                return x-269, tp
+            end
         end
     end
-    return false
+    return 0, 0
 end
 
-function aeonic_prop(ability, actor)
-    if ability.aeonic and (ability.weapon == info.aeonic and actor == info.player or settings.aeonic and info.player ~= actor) then
+function aeonic_am(step)
+    local stepAM, tpAM = aeonic_am_level()
+    if stepAM > 0 then
+        return true, (3-stepAM < step), (3-tpAM < step)
+    end
+    return false, false, false
+end
+
+function aeonic_prop(anyAM, ability, actor)
+    if anyAM and ability.aeonic and (ability.weapon == info.aeonic and actor == info.player or settings.aeonic and info.player ~= actor) then
         return {ability.aeonic, ability.skillchain[1], ability.skillchain[2]}
     end
     return ability.skillchain
@@ -414,15 +430,23 @@ function check_props(old, new)
     end
 end
 
-function get_skills(abilities, active, resource, AM)
+function get_skills(abilities, active, resource, anyAM, stepAM, tpAM)
     local tt = {{},{},{},{}}
     for k=1,#abilities do
         local ability_id = abilities[k]
         local skillchain = skills[resource][ability_id]
         if skillchain then
-            local lv, prop, aeonic = check_props(active, aeonic_prop(skillchain, info.player))
+        -- The base problem is that an aeonic ws like shijin spiral can act in many different ways:
+        -- if AM is not up, the WS will put light on the target, but cannot make lv. 4 light or radiance
+        -- if AM is not up but WS will give AM high enough for radiance for that step? Only light!
+        -- if AM is up, but SC step too low for radiance and the next AM won't be high enough for that step, it will make light
+        -- if AM is up, but SC step too low for radiance and the next AM is high enough for that step it will make radiance
+        -- if AM is up, and SC step high enough for radiance, the WS will make radiance
+        
+            local lv, prop, aeonic = check_props(active, aeonic_prop(anyAM, skillchain, info.player))
             if prop then
-                prop = AM and aeonic or prop
+--                windower.add_to_chat(1, 'anyAM: ' .. (anyAM and 'true' or 'false') .. ', stepAM: ' .. (stepAM and 'true' or 'false') .. ', tpAM: ' .. (tpAM and 'true' or 'false') .. ', aeonic: ' .. (aeonic and 'valid' or 'nil') .. ', prop: ' .. (prop and 'valid' or 'nil'))
+                prop = (stepAM and aeonic) or (tpAM and skillchain.aeonic and aeonic) or prop
                 local temp = {}
                 temp.name = res[resource][ability_id].name
                 temp.prop = prop
@@ -507,7 +531,7 @@ function check_results(reson)
         resultTable = tableCombine(resultTable, tempTable)
     end
     if settings.Show.weapon[info.job] then
-        tempTable = get_skills(windower.ffxi.get_abilities().weapon_skills, reson.active, 'weapon_skills', info.aeonic and aeonic_am(reson.step))
+        tempTable = get_skills(windower.ffxi.get_abilities().weapon_skills, reson.active, 'weapon_skills', aeonic_am(reson.step))
         if autows.enabled and autows.close and autowsNextWS == '' then
             find_weaponskill(tempTable, reson, 'ws')
         end
@@ -568,7 +592,21 @@ windower.register_event('prerender', function()
         if timer > 0 then
             local tryOpen = true
             if not reson.closed then
-                reson.disp_info = reson.disp_info or check_results(reson)
+                -- if using an aeonic and tp > aftermath, check_results
+                if reson.disp_info == nil then
+                    reson.disp_info = check_results(reson)
+                    reson.stepAM, reson.tpAM = aeonic_am_level()
+                else
+                    local stepAM, tpAM = aeonic_am_level()
+                    if (reson.stepAM ~= stepAM) or (reson.tpAM ~=tpAM) then
+                        if settings.debugLogs then
+                            windower.add_to_chat(207, 'Recalculating SCs due to change in AM')
+                        end
+                        reson.disp_info = check_results(reson)
+                        reson.stepAM = stepAM
+                        reson.tpAM = tpAM
+                    end
+                end
                 tryOpen = (autows.waitForSC == false) and ((autowsNextWS == nil) or (autowsNextWS == ''))
                 if now < reson.delay then
                     reson.waiting = true
@@ -723,14 +761,14 @@ function action_handler(act)
         local step = (reson and reson.step or 1) + 1
 
         if level == 3 and reson and ability then
-            level = check_props(reson.active, aeonic_prop(ability, actor))
+            level = check_props(reson.active, aeonic_prop(true, ability, actor))
         end
 
         local closed = step > 5 or level == 4
 
         apply_properties(target.id, resource, action_id, {skillchain}, delay, step, closed)
     elseif ability and (message_ids:contains(message_id) or message_id == 2 and buffs[actor] and chain_buff(buffs[actor])) then
-        apply_properties(target.id, resource, action_id, aeonic_prop(ability, actor), ability.delay or 3, 1)
+        apply_properties(target.id, resource, action_id, aeonic_prop(true, ability, actor), ability.delay or 3, 1)
     elseif message_id == 529 then
         apply_properties(target.id, resource, action_id, chainbound[param], 2, 1, false, param)
     elseif message_id == 100 and buff_dur[param] then
