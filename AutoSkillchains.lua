@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.25.10.24'
+_addon.version = '1.25.10.30'
 
 require('luau')
 require('pack')
@@ -629,7 +629,7 @@ windower.register_event('prerender', function()
             skill_props:update(reson)
             skill_props:show()
         else
-            if autows.enabled and autows.open then
+            if autows and autows.enabled and autows.open then
                 if (now - autowsLastCheck) >= autows.openWsDelay then
                     local player = windower.ffxi.get_player()
                     if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
