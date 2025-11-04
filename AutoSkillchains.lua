@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.25.10.31'
+_addon.version = '1.25.11.04'
 
 require('luau')
 require('pack')
@@ -66,6 +66,7 @@ default_autows.closeWsPriority = ''
 default_autows.blacklist = L{'Cyclone','Aeolian Edge','Fell Cleave','Sonic Thrust','Spinning Attack','Shockwave','Earth Crusher','Cataclysm','Spinning Scythe','Circle Blade'}
 default_autows.hpGt = 3
 default_autows.hpLt = 100
+default_autows.distance = 0
 
 settings = config.load(default)
 
@@ -532,7 +533,7 @@ function check_results(reson)
     end
     if settings.Show.weapon[info.job] then
         tempTable = get_skills(windower.ffxi.get_abilities().weapon_skills, reson.active, 'weapon_skills', aeonic_am(reson.step))
-        if autows.enabled and autows.close and autowsNextWS == '' then
+        if autows.enabled and autows.close then
             find_weaponskill(tempTable, reson, 'ws')
         end
         resultTable = tableCombine(resultTable, tempTable)
@@ -617,8 +618,8 @@ windower.register_event('prerender', function()
                             if (autowsNextWS ~= nil) and (autowsNextWS ~= '') then
                                 local player = windower.ffxi.get_player()
                                 if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
-                                    if player.vitals.tp > autows.closeTp then -- autowsNextCmd == 'ja' or ?
-                                        if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
+                                    if (autowsNextCmd ~= 'ws') or (player.vitals.tp > autows.closeTp) then -- autowsNextCmd == 'ja' or ?
+                                        if (autows.hpGt < targ.hpp) and (targ.hpp < autows.hpLt) and ((autows.distance == 0) or (autows.distance >= math.floor(math.sqrt(targ.distance) * 10 + 0.5)/10)) then
                                             if settings.debugLogs then
                                                 windower.add_to_chat(207, '%s':format(autowsNextWS))
                                             end
@@ -647,7 +648,7 @@ windower.register_event('prerender', function()
                         local player = windower.ffxi.get_player()
                         if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
                             if player.vitals.tp > autows.openTp then
-                                if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
+                                if (autows.hpGt < targ.hpp) and (targ.hpp < autows.hpLt) and ((autows.distance == 0) or (autows.distance >= math.floor(math.sqrt(targ.distance) * 10 + 0.5)/10)) then
                                     if info.openerValid and autows.opener ~= '' then
                                         if settings.debugLogs then
                                             windower.add_to_chat(207, '%s':format(autows.opener))
@@ -672,7 +673,7 @@ windower.register_event('prerender', function()
                     local player = windower.ffxi.get_player()
                     if (player ~= nil) and (player.status == 1) and (targ ~= nil) then
                         if player.vitals.tp > autows.openTp then
-                            if autows.hpGt < targ.hpp and targ.hpp < autows.hpLt then
+                            if (autows.hpGt < targ.hpp) and (targ.hpp < autows.hpLt) and ((autows.distance == 0) or (autows.distance >= math.floor(math.sqrt(targ.distance) * 10 + 0.5)/10)) then
                                 if info.openerValid and autows.opener ~= '' then
                                     if settings.debugLogs then
                                         windower.add_to_chat(207, '%s':format(autows.opener))
