@@ -53,6 +53,8 @@ Make a subdirectory with your character name for character specific configs, i.e
     
     hpLt               -- percentage of hps the mob must be below when considering to weaponskill, helps avoid (too far)
 
+    distance           -- distance in yalms before using weaponskill. Set to 0 to disable, around 3.5 for melee, 15.8 for ranged.
+
 Displays a text object containing skillchain elements resonating on current target, timer for skillchain window,
 along with a list of weapon skills that can skillchain based on the weapon you have currently equipped. 
 
