@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.25.11.04'
+_addon.version = '1.26.06.26'
 
 require('luau')
 require('pack')
@@ -77,6 +77,7 @@ buff_dur = {[163]=40,[164]=30,[470]=60}
 info = {}
 resonating = {}
 buffs = {}
+autows = {}
 local last_weapon = nil
 local last_weapon_type = ''
 local autowsNextCmd = ''
