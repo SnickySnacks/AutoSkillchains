@@ -41,11 +41,11 @@ Make a subdirectory with your character name for character specific configs, i.e
 
     closeWindowMinimum -- minimum amount of time that can be remaining in the window and still attempt a weaponskill
     
-    levelPriority      -- the priority of what skillchain level to make, remove a level to avoid it entirely
+    levelPriority      -- the priority of what skillchain level to make, remove a level to avoid it entirely. List must start with 'dummy'.
     
     chainPriority      -- prioritize Light or Darkness when making a level 3 skillchain
 
-    closeWsPriority    -- after checking chainPriority, which weaponskill should be used
+    closeWsPriority    -- after checking chainPriority, the priority list of what weaponskills should be used. List must start with 'dummy'.
     
     blacklist          -- all the aoe weaponskills you probably don't want to use
     
