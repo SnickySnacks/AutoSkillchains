@@ -1,5 +1,5 @@
 --[[
-Copyright © 2025, SnickySnacks
+Copyright © 2026, SnickySnacks
 Based on Skillchains by Ivaar and AutoWS by Lorand
 All rights reserved.
 
@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _addon.author = 'SnickySnacks'
 _addon.command = 'asc'
 _addon.name = 'AutoSkillChains'
-_addon.version = '1.26.06.26'
+_addon.version = '1.26.07.30'
 
 require('luau')
 require('pack')
@@ -62,7 +62,7 @@ default_autows.closeWindowDelay = 1
 default_autows.closeWindowMinimum = 1
 default_autows.levelPriority = L{'dummy',3,4,2,1} -- 'dummy' required to keep the list from breaking if there is only 1 number
 default_autows.chainPriority = ''
-default_autows.closeWsPriority = ''
+default_autows.closeWsPriority = L{'dummy'}
 default_autows.blacklist = L{'Cyclone','Aeolian Edge','Fell Cleave','Sonic Thrust','Spinning Attack','Shockwave','Earth Crusher','Cataclysm','Spinning Scythe','Circle Blade'}
 default_autows.hpGt = 3
 default_autows.hpLt = 100
@@ -73,6 +73,7 @@ settings = config.load(default)
 skill_props = texts.new('',settings.display,settings)
 message_ids = S{110,185,187,317,802}
 skillchain_ids = S{288,289,290,291,292,293,294,295,296,297,298,299,300,301,385,386,387,388,389,390,391,392,393,394,395,396,397,767,768,769,770}
+tracked_buffs = S{163,164,270,271,272,470}
 buff_dur = {[163]=40,[164]=30,[470]=60}
 info = {}
 resonating = {}
@@ -198,7 +199,7 @@ function try_load_config(path)
     return false
 end
 
-function load_autows(on_change_only)
+function load_autows(on_change_only, reload)
     if info == nil then
         if settings.debugLogs then
             windower.add_to_chat(207, 'info was nil')
@@ -276,7 +277,7 @@ function load_autows(on_change_only)
         if settings.debugLogs then
             windower.add_to_chat(207, 'Loaded config for ' .. current_weapon_type)
         end
-    elseif not default_filt then
+    elseif reload or not default_filt then
         default_filt = true
         autows = config.load(path .. 'autows-default.xml', default_autows)
         config.save(autows)
@@ -304,25 +305,26 @@ function print_autows_status()
     if autows.close then
         local levelPriority = ''
         local chainPriority = ''
+        local wsPriority = ''
         for x=2,#autows.levelPriority,1 do
             if x > 2 then
                 levelPriority = levelPriority..' -> '
             end
             levelPriority = levelPriority..autows.levelPriority[x]
         end
-        if autows.chainPriority ~= '' or autows.closeWsPriority ~= '' then
-            chainPriority = ', Prioritizing '
-            if autows.chainPriority ~= '' then
-                chainPriority = chainPriority..autows.chainPriority
-            end
-            if autows.closeWsPriority ~= '' then
-                if autows.chainPriority ~= '' then
-                    chainPriority = chainPriority..' and '
-                end
-                chainPriority = chainPriority..autows.closeWsPriority
-            end
+        if autows.chainPriority ~= '' then
+            chainPriority = ', Prioritizing '..autows.chainPriority
+            windower.add_to_chat(207, 'Closing Level %s%s':format(levelPriority, chainPriority))
         end
-        windower.add_to_chat(207, 'Closing Level %s%s':format(levelPriority, chainPriority))
+        if #autows.closeWsPriority > 1 then
+            for x=2,#autows.closeWsPriority,1 do
+                if x > 2 then
+                    wsPriority = wsPriority..' -> '
+                end
+                wsPriority = wsPriority..autows.closeWsPriority[x]
+            end
+            windower.add_to_chat(207, 'WS Priority: %s':format(wsPriority))
+        end
     end
 end
 
@@ -344,7 +346,7 @@ function update_opener()
     local main_weapon = windower.ffxi.get_items(info.main_bag, info.main_weapon).id
     local wasEnabled = autows and autows.enabled
     local hadOpener = autows and autows.opener
-    load_autows(true)
+    load_autows(true, false)
 
     if main_weapon ~= 0 then
         if autows ~= nil then
@@ -480,20 +482,38 @@ end
 
 function find_weaponskill(tempTable, reson, command)
     local last_lp, lastk, last_prop
+    local last_ws_priority = #autows.closeWsPriority+1
 
     for x=2,#autows.levelPriority,1 do
         local lp = tonumber(autows.levelPriority[x])
            for k=#tempTable[lp],1,-1 do
             local name = tempTable[lp][k].name
             if not tableContains(autows.blacklist, name) then
-                if lp ~= 3 or autows.chainPriority == '' or tempTable[lp][k].prop == autows.chainPriority then
-                    if lp ~= 3 or autows.closeWsPriority == '' or name == autows.closeWsPriority then
+                -- if chain priority is not set or matches the current property, use this ws unless ws priority is set
+                if autows.chainPriority == '' or tempTable[lp][k].prop == autows.chainPriority then
+                    if #autows.closeWsPriority < 2 then
                         autowsNextCmd = command
                         autowsNextWS = name
                         return tempTable
                     end
                 end
+                
+                -- Any match here will guarantee we use a prioritized ws, but we need to check for higher priorities, too
+                for i=2,last_ws_priority-1,1 do
+                    if name == autows.closeWsPriority[i] then
+                        last_ws_priority = i
+                        break
+                    end
+                end
+                
+                -- We found a prioritized ws, so use it
+                if last_ws_priority ~= #autows.closeWsPriority+1 then
+                    autowsNextCmd = command
+                    autowsNextWS = autows.closeWsPriority[last_ws_priority]
+                    return tempTable
+                end
 
+                -- store the last_prop if none is set, or update it if the chain priority matches
                 if (last_prop == nil) or (lp == 3 and autows.chainPriority ~= '' and last_prop ~= autows.chainPriority and tempTable[lp][k].prop == autows.chainPriority) then
                     last_lp = lp
                     last_k = k
@@ -774,17 +794,18 @@ function action_handler(act)
     elseif message_id == 529 then
         apply_properties(target.id, resource, action_id, chainbound[param], 2, 1, false, param)
     elseif message_id == 100 and buff_dur[param] then
+        -- Used to determine if someone *else* is using an ability that will let us chain?
+        -- But shouldn't the chainbound code catch that? hmm
         buffs[actor] = buffs[actor] or {}
         buffs[actor][param] = buff_dur[param] + os.time()
+--        windower.add_to_chat(207, 'Actor Gained Buff(' .. param .. '): ' .. res.buffs[param].en)
     end
 end
 
 ActionPacket.open_listener(action_handler)
 
 windower.register_event('incoming chunk', function(id, data)
-    if id == 0x29 and data:unpack('H', 25) == 206 and data:unpack('I', 9) == info.player then
-        buffs[info.player][data:unpack('H', 13)] = nil
-    elseif id == 0x50 and data:byte(6) == 0 then
+    if id == 0x50 and data:byte(6) == 0 then
         info.main_weapon = data:byte(5)
         info.main_bag = data:byte(7)
         update_weapon()
@@ -798,6 +819,7 @@ windower.register_event('incoming chunk', function(id, data)
             local buff = data:unpack('H', n*2+7)
             if buff_dur[buff] or buff > 269 and buff < 273 then
                 set_buff[buff] = true
+--                windower.add_to_chat(207, 'Has Buff (' .. buff .. '): ' .. res.buffs[buff].en)
             end
         end
         buffs[info.player] = set_buff
@@ -806,6 +828,21 @@ windower.register_event('incoming chunk', function(id, data)
             windower.add_to_chat(207, "ability change")
         end
         update_opener()
+    end
+end)
+
+--[[ I'd prefer to use gain/lose buff, but it's unreliable if the addon is reloaded...
+windower.register_event('gain buff', function(buff_id)
+    if tracked_buffs:contains(buff_id) then
+        windower.add_to_chat(207, 'Gained Buff(' .. buff_id .. '): ' .. res.buffs[buff_id].en)
+        buffs[info.player][buff_id] = true
+    end
+end)
+]]--
+windower.register_event('lose buff', function(buff_id)
+    if tracked_buffs:contains(buff_id) then
+--        windower.add_to_chat(207, 'Lost Buff(' .. buff_id .. '): ' .. res.buffs[buff_id].en)
+        buffs[info.player][buff_id] = nil
     end
 end)
 
@@ -845,7 +882,7 @@ windower.register_event('addon command', function(cmd, ...)
             if subcmd == 'reload' then
                 windower.add_to_chat(207, 'Reloading AutoWS config!');
                 local was_enabled = autows.enabled
-                load_autows(false)
+                load_autows(false, true)
                 autows.enabled = was_enabled
                 update_opener()
             elseif subcmd == 'on' then
@@ -862,7 +899,7 @@ windower.register_event('addon command', function(cmd, ...)
     elseif cmd == 'eval' then
         assert(loadstring(table.concat({...}, ' ')))()
     else
-        windower.add_to_chat(207, '%s: valid commands [save | move | burst | weapon | spell | pet | props | step | timer | color | aeonic]':format(_addon.name))
+        windower.add_to_chat(207, '%s: valid commands [save | move | burst | weapon | spell | pet | props | step | timer | color | aeonic | autows]':format(_addon.name))
     end
 end)
 
@@ -874,7 +911,7 @@ windower.register_event('job change', function(job, lvl)
         autowsNextWS = ''
         local wasEnabled = autows.enabled
         config.reload(settings)
-        load_autows(false)
+        load_autows(false, false)
         update_opener()
         
         if autows.enabled or wasEnabled then
@@ -899,7 +936,7 @@ windower.register_event('load', function()
         info.range = equip.range
         info.range_bag = equip.range_bag
         
-        load_autows(false)
+        load_autows(false, false)
         update_weapon()
         update_opener()
         buffs[info.player] = {}
